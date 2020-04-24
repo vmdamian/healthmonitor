@@ -132,6 +132,58 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 	}
 }
 
+func (h *APIHandler) RegisterDeviceInfo(resp http.ResponseWriter, req *http.Request) {
+	resp.WriteHeader(200)
+
+	bodyBytes, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.WithError(err).Errorln("error reading register device info request body")
+		resp.WriteHeader(500)
+		return
+	}
+
+	var deviceInfoRequest domain.DeviceInfo
+	err = json.Unmarshal(bodyBytes, &deviceInfoRequest)
+	if err != nil {
+		log.WithError(err).Errorln("error unmarshalling register device info request body")
+		resp.WriteHeader(500)
+		return
+	}
+
+	err = h.devicesRepo.RegisterDeviceInfo(deviceInfoRequest)
+	if err != nil {
+		log.WithError(err).Errorln("error registering device info")
+		resp.WriteHeader(500)
+		return
+	}
+}
+
+func (h *APIHandler) RegisterDeviceData(resp http.ResponseWriter, req *http.Request) {
+	resp.WriteHeader(200)
+
+	bodyBytes, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.WithError(err).Errorln("error reading register device info request body")
+		resp.WriteHeader(500)
+		return
+	}
+
+	var deviceDatasetRequest domain.DeviceDataset
+	err = json.Unmarshal(bodyBytes, &deviceDatasetRequest)
+	if err != nil {
+		log.WithError(err).Errorln("error unmarshalling register device info request body")
+		resp.WriteHeader(500)
+		return
+	}
+
+	err = h.devicesRepo.RegisterDeviceData(deviceDatasetRequest)
+	if err != nil {
+		log.WithError(err).Errorln("error registering device info")
+		resp.WriteHeader(500)
+		return
+	}
+}
+
 func (h *APIHandler) RegisterUser(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(200)
 

@@ -27,6 +27,10 @@ func (dr *DevicesRepo) GetDeviceInfo(did string) (*domain.DeviceInfo, error) {
 	}, nil
 }
 
+func (dr *DevicesRepo) RegisterDeviceInfo(deviceInfo domain.DeviceInfo) error {
+	return nil
+}
+
 func (dr *DevicesRepo) GetDeviceData(did string) (*domain.DeviceDataset, error) {
 
 	startTimestamp := time.Now().Unix()
@@ -42,4 +46,8 @@ func (dr *DevicesRepo) GetDeviceData(did string) (*domain.DeviceDataset, error) 
 		DID: did,
 		Data: data,
 	}, nil
+}
+
+func (dr *DevicesRepo) RegisterDeviceData(deviceData domain.DeviceDataset) error {
+	return nil
 }
