@@ -11,7 +11,7 @@
 /healthmonitorui/yarn-error.log*
 
 # Editor directories and files
-.idea
+/.idea
 /healthmonitorui/.idea
 /healthmonitorapi/.idea
 /healthmonitorapi/healthmonitorapi
