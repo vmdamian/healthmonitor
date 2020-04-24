@@ -1,0 +1,23 @@
+/healthmonitorui/node_modules
+/healthmonitorui/dist
+
+# local env files
+/healthmonitorui/.env.local
+/healthmonitorui/.env.*.local
+
+# Log files
+/healthmonitorui/npm-debug.log*
+/healthmonitorui/yarn-debug.log*
+/healthmonitorui/yarn-error.log*
+
+# Editor directories and files
+.idea
+/healthmonitorui/.idea
+/healthmonitorapi/.idea
+/healthmonitorapi/healthmonitorapi
+/healthmonitorui/.vscode
+/healthmonitorui/*.suo
+/healthmonitorui/*.ntvs*
+/healthmonitorui/*.njsproj
+/healthmonitorui/*.sln
+/healthmonitorui/*.sw?
