@@ -1,6 +1,7 @@
 package gateways
 
 import (
+	"context"
 	"github.com/gocql/gocql"
 )
 
@@ -36,15 +37,15 @@ func (ur *UsersRepo) Start() error {
 	return nil
 }
 
-func (ur *UsersRepo) RegisterUser(username string, cryptedPassword string) error {
-	err := ur.Session.Query(userPasswordInsertQuery, username, cryptedPassword).Exec()
+func (ur *UsersRepo) RegisterUser(ctx context.Context, username string, cryptedPassword string) error {
+	err := ur.Session.Query(userPasswordInsertQuery, username, cryptedPassword).WithContext(ctx).Exec()
 	return err
 }
 
-func (ur *UsersRepo) LoginUser(username string, cryptedPassword string) (bool, string, error) {
+func (ur *UsersRepo) LoginUser(ctx context.Context, username string, cryptedPassword string) (bool, string, error) {
 	var receivedCryptedPassword string
 
-	err := ur.Session.Query(userPasswordSelectQuery, username).Consistency(gocql.One).Scan(&receivedCryptedPassword)
+	err := ur.Session.Query(userPasswordSelectQuery, username).Consistency(gocql.One).WithContext(ctx).Scan(&receivedCryptedPassword)
 	if err != nil {
 		return false, "", err
 	}
@@ -58,10 +59,10 @@ func (ur *UsersRepo) LoginUser(username string, cryptedPassword string) (bool, s
 }
 
 //TODO: Make this accept a token instead of username and password.
-func (ur *UsersRepo) AuthUser(username string, cryptedPassword string) (bool, error) {
+func (ur *UsersRepo) AuthUser(ctx context.Context, username string, cryptedPassword string) (bool, error) {
 	var receivedCryptedPassword string
 
-	err := ur.Session.Query(userPasswordSelectQuery, username).Consistency(gocql.One).Scan(&receivedCryptedPassword)
+	err := ur.Session.Query(userPasswordSelectQuery, username).Consistency(gocql.One).WithContext(ctx).Scan(&receivedCryptedPassword)
 	if err != nil {
 		return false, err
 	}

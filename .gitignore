@@ -15,6 +15,7 @@
 /healthmonitorui/.idea
 /healthmonitorapi/.idea
 /healthmonitorapi/healthmonitorapi
+/healthmonitormockdevice/healthmonitormockdevice
 /healthmonitorui/.vscode
 /healthmonitorui/*.suo
 /healthmonitorui/*.ntvs*

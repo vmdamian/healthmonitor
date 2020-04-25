@@ -1,0 +1,41 @@
+PUT /device-info
+{
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 2
+  },
+  "mappings": {
+    "properties": {
+      "did": {
+        "type": "text"
+      },
+      "last_seen_timestamp": {
+        "type": "text"
+      }
+    }
+  }
+}
+
+PUT /device-data
+{
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 2
+  },
+  "mappings": {
+    "properties": {
+      "did": {
+        "type": "text"
+      },
+      "timestamp": {
+        "type": "date"
+      },
+      "heartrate": {
+        "type": "text"
+      },
+      "temperature": {
+        "type": "text"
+      }
+    }
+  }
+}

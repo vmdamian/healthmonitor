@@ -4,4 +4,5 @@ type HealthMonitorAPIServiceConfig struct {
 	Port string
 	PasswordSalt string
 	CassandraHost string
+	ElasticsearchHost string
 }

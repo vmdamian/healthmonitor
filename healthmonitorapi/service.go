@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	getDeviceInfoPath = "/healthmonitorapi/entities/devices/info"
-	getDeviceDataPath = "/healthmonitorapi/entities/devices/data"
+	DeviceInfoPath = "/healthmonitorapi/entities/devices/info"
+	DeviceDataPath = "/healthmonitorapi/entities/devices/data"
 
 	registerPath = "/healthmonitorapi/auth/register"
 	loginPath = "/healthmonitorapi/auth/login"
@@ -25,7 +25,7 @@ type HealthMonitorAPIService struct {
 
 func NewHealthMonitorAPIService(config *HealthMonitorAPIServiceConfig) *HealthMonitorAPIService {
 	usersRepo := gateways.NewUsersRepo(config.CassandraHost)
-	devicesRepo := gateways.NewDevicesRepo()
+	devicesRepo := gateways.NewDevicesRepo(config.ElasticsearchHost)
 	apiHandler := gateways.NewAPIHandler(usersRepo, devicesRepo, config.PasswordSalt)
 
 	service := &HealthMonitorAPIService{
@@ -45,6 +45,11 @@ func (s *HealthMonitorAPIService) Start() error {
 		return err
 	}
 
+	err = s.DevicesRepo.Start()
+	if err != nil {
+		return err
+	}
+
 	allowedHeaders := handlers.AllowedHeaders([]string{"Accept", "Accept-Language", "Content-Type", "Content-Language", "Origin"})
 
 	err = http.ListenAndServe(":" + s.config.Port, handlers.CORS(allowedHeaders)(s.router))
@@ -58,8 +63,10 @@ func (s *HealthMonitorAPIService) Start() error {
 func (s *HealthMonitorAPIService) registerRoutes() {
 	router := mux.NewRouter()
 
-	router.HandleFunc(getDeviceInfoPath, s.APIHandler.GetDeviceInfo).Methods("GET")
-	router.HandleFunc(getDeviceDataPath, s.APIHandler.GetDeviceData).Methods("GET")
+	router.HandleFunc(DeviceInfoPath, s.APIHandler.GetDeviceInfo).Methods("GET")
+	router.HandleFunc(DeviceDataPath, s.APIHandler.GetDeviceData).Methods("GET")
+	router.HandleFunc(DeviceInfoPath, s.APIHandler.RegisterDeviceInfo).Methods("POST")
+	router.HandleFunc(DeviceDataPath, s.APIHandler.RegisterDeviceData).Methods("POST")
 	router.HandleFunc(registerPath, s.APIHandler.RegisterUser).Methods("POST")
 	router.HandleFunc(loginPath, s.APIHandler.LoginUser).Methods("POST")
 

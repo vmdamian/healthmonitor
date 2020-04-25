@@ -8,12 +8,15 @@ import (
 	"healthmonitor/healthmonitorapi/domain"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 const (
 	usernameQueryParam = "username"
 	passwordQueryParam = "password"
 	didQueryParam = "did"
+	sinceQueryParam = "since"
 )
 
 type APIHandler struct {
@@ -32,13 +35,14 @@ func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, passwordSalt 
 
 func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(200)
+	ctx := req.Context()
 
 	// TODO: Make this use token instead of username and password.
 	username := req.URL.Query()[usernameQueryParam][0]
 	password := req.URL.Query()[passwordQueryParam][0]
 	did := req.URL.Query()[didQueryParam][0]
 
-	if username == "" || password == "" {
+	if username == "" || password == "" || did == "" {
 		resp.WriteHeader(400)
 		return
 	}
@@ -47,7 +51,7 @@ func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) 
 	hashedPassword := sha256.Sum256([]byte(saltedPassword))
 	cryptedPassword := hex.EncodeToString(hashedPassword[:])
 
-	userAuth, err := h.usersRepo.AuthUser(username, cryptedPassword)
+	userAuth, err := h.usersRepo.AuthUser(ctx, username, cryptedPassword)
 	if err != nil {
 		log.WithError(err).Errorln("error trying to authenticate user")
 		resp.WriteHeader(500)
@@ -59,7 +63,7 @@ func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	info, err := h.devicesRepo.GetDeviceInfo(did)
+	info, err := h.devicesRepo.GetDeviceInfo(ctx, did)
 	if err != nil {
 		log.WithError(err).Errorln("error getting device info")
 		resp.WriteHeader(500)
@@ -83,22 +87,32 @@ func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) 
 
 func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(200)
+	ctx := req.Context()
 
 	// TODO: Make this use token instead of username and password.
 	username := req.URL.Query()[usernameQueryParam][0]
 	password := req.URL.Query()[passwordQueryParam][0]
 	did := req.URL.Query()[didQueryParam][0]
+	since := req.URL.Query()[sinceQueryParam][0]
 
-	if username == "" || password == "" {
+	if username == "" || password == "" || did == "" || since == "" {
 		resp.WriteHeader(400)
 		return
 	}
+
+	sinceTimestamp, err := strconv.ParseInt(since, 10, 64)
+	if err != nil {
+		log.WithError(err).Errorln("error trying to parse since param")
+		resp.WriteHeader(400)
+		return
+	}
+	sinceTime := time.Unix(sinceTimestamp, 0)
 
 	saltedPassword  := password + h.passwordSalt
 	hashedPassword := sha256.Sum256([]byte(saltedPassword))
 	cryptedPassword := hex.EncodeToString(hashedPassword[:])
 
-	userAuth, err := h.usersRepo.AuthUser(username, cryptedPassword)
+	userAuth, err := h.usersRepo.AuthUser(ctx, username, cryptedPassword)
 	if err != nil {
 		log.WithError(err).Errorln("error trying to authenticate user")
 		resp.WriteHeader(500)
@@ -110,7 +124,7 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	data, err := h.devicesRepo.GetDeviceData(did)
+	data, err := h.devicesRepo.GetDeviceData(ctx, did, sinceTime)
 	if err != nil {
 		log.WithError(err).Errorln("error getting device data response")
 		resp.WriteHeader(500)
@@ -134,6 +148,7 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 
 func (h *APIHandler) RegisterDeviceInfo(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(200)
+	ctx := req.Context()
 
 	bodyBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -150,7 +165,7 @@ func (h *APIHandler) RegisterDeviceInfo(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	err = h.devicesRepo.RegisterDeviceInfo(deviceInfoRequest)
+	err = h.devicesRepo.RegisterDeviceInfo(ctx, deviceInfoRequest)
 	if err != nil {
 		log.WithError(err).Errorln("error registering device info")
 		resp.WriteHeader(500)
@@ -160,6 +175,7 @@ func (h *APIHandler) RegisterDeviceInfo(resp http.ResponseWriter, req *http.Requ
 
 func (h *APIHandler) RegisterDeviceData(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(200)
+	ctx := req.Context()
 
 	bodyBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -176,7 +192,7 @@ func (h *APIHandler) RegisterDeviceData(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	err = h.devicesRepo.RegisterDeviceData(deviceDatasetRequest)
+	err = h.devicesRepo.RegisterDeviceData(ctx, deviceDatasetRequest)
 	if err != nil {
 		log.WithError(err).Errorln("error registering device info")
 		resp.WriteHeader(500)
@@ -186,6 +202,7 @@ func (h *APIHandler) RegisterDeviceData(resp http.ResponseWriter, req *http.Requ
 
 func (h *APIHandler) RegisterUser(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(200)
+	ctx := req.Context()
 
 	bodyBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -206,7 +223,7 @@ func (h *APIHandler) RegisterUser(resp http.ResponseWriter, req *http.Request) {
 	hashedPassword := sha256.Sum256([]byte(saltedPassword))
 	cryptedPassword := hex.EncodeToString(hashedPassword[:])
 
-	err = h.usersRepo.RegisterUser(registerUserRequest.Username, cryptedPassword)
+	err = h.usersRepo.RegisterUser(ctx, registerUserRequest.Username, cryptedPassword)
 	if err != nil {
 		log.WithError(err).Errorln("error trying to register user")
 		resp.WriteHeader(500)
@@ -234,6 +251,7 @@ func (h *APIHandler) RegisterUser(resp http.ResponseWriter, req *http.Request) {
 
 func (h *APIHandler) LoginUser(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(200)
+	ctx := req.Context()
 
 	bodyBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -254,7 +272,7 @@ func (h *APIHandler) LoginUser(resp http.ResponseWriter, req *http.Request) {
 	hashedPassword := sha256.Sum256([]byte(saltedPassword))
 	cryptedPassword := hex.EncodeToString(hashedPassword[:])
 
-	userAuth, token, err := h.usersRepo.LoginUser(loginUserRequest.Username, cryptedPassword)
+	userAuth, token, err := h.usersRepo.LoginUser(ctx, loginUserRequest.Username, cryptedPassword)
 	if err != nil {
 		log.WithError(err).Errorln("error trying to authenticate user")
 		resp.WriteHeader(500)
