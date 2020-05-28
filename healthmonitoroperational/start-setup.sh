@@ -13,11 +13,13 @@ sleep 10s
 echo -e "Starting Elasticsearch"
 docker-compose -f docker/docker-compose-elasticsearch.yml up -d
 
-sleep 1m
+sleep 4m
 
 echo -e "Starting Healthmonitor API"
-/home/ubuntu/go/src/healthmonitor/healthmonitorapi/healthmonitorapi
+/home/$USER/go/src/healthmonitor/healthmonitorapi/healthmonitorapi &
+
+sleep 10s
 
 echo -e "Starting Healthmonitor UI"
-cd /home/ubuntu/go/src/healthmonitor/healthmonitorui/
+cd /home/$USER/go/src/healthmonitor/healthmonitorui/ 
 npm run serve

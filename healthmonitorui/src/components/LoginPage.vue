@@ -24,9 +24,7 @@
 </template>
 
 <script>
-
-import LineChart from './line-chart.js'
-
+  import LineChart from './LineChart.vue'
 var loginURL = 'http://192.168.92.133:9000/healthmonitorapi/auth/login'
 var registerURL = 'http://192.168.92.133:9000/healthmonitorapi/auth/register'
 var deviceDataURL = 'http://192.168.92.133:9000/healthmonitorapi/entities/devices/data';
@@ -84,21 +82,26 @@ export default {
         username: this.loginUsername,
         password: this.loginPassword,
       }).then(function(response) {
-        if (response.statusText == "OK") {
+        if (response.statusText === "OK") {
+          this.token = response.data.token
+          if (this.token === "") {
+            return
+          }
+          console.log('got token ' + this.token)
           this.loginOK = true
+          this.timer = setInterval(this.refreshDeviceData, 5000)
           this.username = this.loginUsername
           this.password = this.loginPassword
           this.loginUsername = ""
           this.loginPassword = ""
-          this.initDeviceData()
           alert("Login OK!")
         }
       }, function(error) {
         this.loginUsername = ""
         this.loginPassword = ""
 
-        if (error.statusText == "Forbidden") {
-          alert("Login failed due to incorrect credetials!")
+        if (error.statusText === "Forbidden") {
+          alert("Login failed due to incorrect credentials!")
         } else {
           alert("Login failed due to server error!")
         }
@@ -106,20 +109,21 @@ export default {
       });
     },
     getDeviceInfo: function(){
-      this.$http.get(deviceInfoURL, {params: {username: this.username, password: this.password, did: "device-test"}}).then(function(response){
-        if (response.statusText == "OK") {
+      this.$http.get(deviceInfoURL, {params: {did: "testdevice1"}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
+        if (response.statusText === "OK") {
           this.deviceInfo = response.data
         }
       }, function(error){
         this.loginOK = false;
-        if (error.statusText == "Forbidden") {
+        clearInterval(this.timer)
+        if (error.statusText === "Forbidden") {
           alert("Login failed!")
         }
       });
     },
     getDeviceData: function(){
-      this.$http.get(deviceDataURL, {params: {username: this.username, password: this.password, did: "device-test"}}).then(function(response){
-        if (response.statusText == "OK") {
+      this.$http.get(deviceDataURL, {params: { did: "testdevice1", since: 0}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
+        if (response.statusText === "OK") {
           this.labels = response.data.data.map(datapoint => datapoint.timestamp)
           this.temperatureData = response.data.data.map(datapoint => datapoint.temperature)
           this.heartrateData = response.data.data.map(datapoint => datapoint.heart_rate)
@@ -129,7 +133,8 @@ export default {
         }
       }, function(error){
         this.loginOK = false;
-        if (error.statusText == "Forbidden") {
+        clearInterval(this.timer)
+        if (error.statusText === "Forbidden") {
           alert("Login failed!")
         }
       });
@@ -140,7 +145,7 @@ export default {
     },
   },
   mounted: function () {
-    setInterval(this.refreshDeviceData, 5000)
+
   },
   beforeDestroy: function() {
     clearInterval(this.timer)

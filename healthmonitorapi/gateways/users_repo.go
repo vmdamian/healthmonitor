@@ -5,6 +5,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+	"time"
 )
 
 const (
@@ -31,6 +32,7 @@ type UsersRepo struct {
 func NewUsersRepo(host string) *UsersRepo {
 	cluster := gocql.NewCluster(host)
 	cluster.Keyspace = keyspace
+	cluster.ConnectTimeout = time.Second * 10
 
 	return &UsersRepo{
 		Cluster: cluster,

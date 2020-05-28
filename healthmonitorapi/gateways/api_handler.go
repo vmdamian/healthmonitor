@@ -52,12 +52,14 @@ func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) 
 	dids := req.URL.Query()[didQueryParam]
 
 	if len(dids) != 1 {
+		log.Errorln("got multiple or 0 dids=%v", dids)
 		statusCode = 400
 		return
 	}
 
 	did := dids[0]
 	if did == "" {
+		log.Errorln("got empty did")
 		statusCode = 400
 		return
 	}
@@ -67,7 +69,7 @@ func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) 
 
 	userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {
-		log.WithError(err).Errorln("error trying to authenticate token")
+		log.WithError(err).Errorln("error trying to authenticate token=%v")
 		statusCode = 500
 		return
 	}
@@ -113,6 +115,7 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 
 	if len(dids) != 1 || len(sinces) != 1 {
 		statusCode = 400
+		log.Errorln("got multiple or 0 dids or sinces dids=%v sinces=%v", dids, sinces)
 		return
 	}
 
@@ -121,12 +124,13 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 
 	if did == "" || since == "" {
 		statusCode = 400
+		log.Errorln("did or since is empty did=%v, since=%v", did, since)
 		return
 	}
 
 	sinceTimestamp, err := strconv.ParseInt(since, 10, 64)
 	if err != nil {
-		log.WithError(err).Errorln("error trying to parse since param")
+		log.WithError(err).Errorln("error trying to parse since=%v", since)
 		statusCode = 400
 		return
 	}
@@ -137,7 +141,7 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 
 	userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {
-		log.WithError(err).Errorln("error trying to authenticate token")
+		log.WithError(err).Errorln("error trying to authenticate token=%v", token)
 		statusCode = 500
 		return
 	}
