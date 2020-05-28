@@ -98,7 +98,7 @@ func (dr *DevicesRepo) GetDeviceData(ctx context.Context, did string, since time
 	termQuery := elastic.NewTermQuery(didField, did)
 	query := elastic.NewBoolQuery().Filter(termQuery, rangeQuery)
 
-	res, err := dr.client.Search(dataIndex).Query(query).Do(ctx)
+	res, err := dr.client.Search(dataIndex).Size(1000).Sort(timestampField, true).Query(query).Do(ctx)
 	if err != nil {
 		return nil, err
 	}

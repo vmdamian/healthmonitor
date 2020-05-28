@@ -157,6 +157,7 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 		statusCode = 500
 		return
 	}
+	log.Info("got device data of length ", len(data.Data))
 
 	bodyBytes, err = json.Marshal(data)
 	if err != nil {

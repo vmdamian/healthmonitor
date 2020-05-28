@@ -14,6 +14,18 @@
       <button v-on:click="loginUser">Login</button>
     </div>
     <div v-if="loginOK">
+      <h2>Selected time interval {{ selectedInterval }}</h2>
+      <select v-model="selectedInterval">
+        <option v-for="(interval, value) in possibleIntervals" :key="value">
+          {{interval}}
+        </option>
+      </select>
+      <h2>Selected device {{ selectedDevice }}</h2>
+      <select v-model="selectedDevice">
+        <option v-for="device in possibleDevices" :key="device">
+          {{device}}
+        </option>
+      </select>
       <h2>Requested device info</h2>
       <span> {{ deviceInfo }} </span>
       <h2>Device data plotted below</h2>
@@ -25,10 +37,10 @@
 
 <script>
   import LineChart from './LineChart.vue'
-var loginURL = 'http://192.168.92.133:9000/healthmonitorapi/auth/login'
-var registerURL = 'http://192.168.92.133:9000/healthmonitorapi/auth/register'
-var deviceDataURL = 'http://192.168.92.133:9000/healthmonitorapi/entities/devices/data';
-var deviceInfoURL = 'http://192.168.92.133:9000/healthmonitorapi/entities/devices/info'
+  const loginURL = 'http://192.168.92.133:9000/healthmonitorapi/auth/login'
+  const registerURL = 'http://192.168.92.133:9000/healthmonitorapi/auth/register'
+  const deviceDataURL = 'http://192.168.92.133:9000/healthmonitorapi/entities/devices/data'
+  const deviceInfoURL = 'http://192.168.92.133:9000/healthmonitorapi/entities/devices/info'
 
 export default {
   name: 'LoginPage',
@@ -37,6 +49,21 @@ export default {
     return {
       registerUsername: "",
       registerPassword: "",
+
+      possibleIntervals: {
+        LAST_MINUTE: 1,
+        LAST_FIVE_MINUTE: 5,
+        LAST_FIFTEEN_MINUTES: 15
+      },
+
+      selectedInterval: 1,
+
+      possibleDevices: [
+              'testdevice0',
+              'testdevice1'
+      ],
+
+      selectedDevice: 'testdevice0',
 
       loginUsername: "",
       loginPassword: "",
@@ -109,7 +136,7 @@ export default {
       });
     },
     getDeviceInfo: function(){
-      this.$http.get(deviceInfoURL, {params: {did: "testdevice1"}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
+      this.$http.get(deviceInfoURL, {params: {did: this.selectedDevice}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
         if (response.statusText === "OK") {
           this.deviceInfo = response.data
         }
@@ -121,8 +148,8 @@ export default {
         }
       });
     },
-    getDeviceData: function(){
-      this.$http.get(deviceDataURL, {params: { did: "testdevice1", since: 0}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
+    getDeviceData: function(since){
+      this.$http.get(deviceDataURL, {params: { did: this.selectedDevice, since: since}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
         if (response.statusText === "OK") {
           this.labels = response.data.data.map(datapoint => datapoint.timestamp)
           this.temperatureData = response.data.data.map(datapoint => datapoint.temperature)
@@ -140,8 +167,11 @@ export default {
       });
     },
     refreshDeviceData: function() {
+
+      var nowTimestamp = Math.round(+new Date()/1000);
+      var minuteAgoTimestamp = nowTimestamp - 60 * this.selectedInterval
       this.getDeviceInfo()
-      this.getDeviceData()
+      this.getDeviceData(minuteAgoTimestamp)
     },
   },
   mounted: function () {
