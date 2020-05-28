@@ -25,7 +25,7 @@
 
 <script>
 
-import LineChart from './LineChart.vue'
+import LineChart from './line-chart.js'
 
 var loginURL = 'http://192.168.92.133:9000/healthmonitorapi/auth/login'
 var registerURL = 'http://192.168.92.133:9000/healthmonitorapi/auth/register'
@@ -138,13 +138,9 @@ export default {
       this.getDeviceInfo()
       this.getDeviceData()
     },
-    initDeviceData: function() {
-      this.refreshDeviceData()
-
-      this.timer = setInterval(this.refreshDeviceData, 5000)
-    }
   },
   mounted: function () {
+    setInterval(this.refreshDeviceData, 5000)
   },
   beforeDestroy: function() {
     clearInterval(this.timer)
