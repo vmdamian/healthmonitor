@@ -41,7 +41,7 @@ func (d *Device) Start(wg *sync.WaitGroup) {
 
 	go func() {
 
-		log.Infof("> device %v started with interval &v", d.did, d.interval)
+		log.Infof("> device %v started with interval %v", d.did, d.interval)
 
 		if d.createDevice() {
 			d.generateDeviceData()
@@ -65,7 +65,7 @@ func (d *Device) createDevice() bool {
 
 	bodyBytes, err := json.Marshal(deviceInfo)
 	if err != nil {
-		log.WithError(err).Errorln("> device %v error marshalling device info", d.did)
+		log.WithError(err).Errorf("> device %v error marshalling device info", d.did)
 		return false
 	}
 	reader := bytes.NewReader(bodyBytes)
