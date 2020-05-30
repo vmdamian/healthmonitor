@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/olivere/elastic/v7"
 	log "github.com/sirupsen/logrus"
 	"healthmonitor/healthmonitorapi/domain"
@@ -16,6 +17,7 @@ const (
 
 	didField = "did"
 	timestampField = "timestamp"
+	lastSeenTimestampField = "last_seen_timestamp"
 )
 
 var (
@@ -80,12 +82,24 @@ func (dr *DevicesRepo) GetDeviceInfo(ctx context.Context, did string) (*domain.D
 }
 
 func (dr *DevicesRepo) RegisterDeviceInfo(ctx context.Context, deviceInfo domain.DeviceInfo) error {
+
+	exists, err := dr.checkExistingDevice(ctx, deviceInfo.DID)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		log.Warningf("got register device info request for did=%v, but device info already exists", deviceInfo.DID)
+		return nil
+	}
+
+	// Register new device. Device info document ids are the same as the device id.
 	infoES := domain.DeviceInfoES{
 		DID: deviceInfo.DID,
 		LastSeenTimestamp: time.Unix(deviceInfo.LastSeenTimestamp, 0).Format(time.RFC3339),
 	}
 
-	_, err := dr.client.Index().Index(infoIndex).BodyJson(infoES).Do(ctx)
+	_, err = dr.client.Index().Index(infoIndex).Id(deviceInfo.DID).BodyJson(infoES).Do(ctx)
 	if err != nil {
 		return err
 	}
@@ -135,6 +149,20 @@ func (dr *DevicesRepo) GetDeviceData(ctx context.Context, did string, since time
 }
 
 func (dr *DevicesRepo) RegisterDeviceData(ctx context.Context, deviceData domain.DeviceDataset) error {
+
+	var maxLastSeenTimestamp int64
+
+	// Check if the device exists.
+	exists, err := dr.checkExistingDevice(ctx, deviceData.DID)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return errors.New("can't insert data for device that does not exist")
+	}
+
+	// Insert new data. Data documents ids are of the form "DID_TIMESTAMP"
 	for _, data := range deviceData.Data {
 		dataES := domain.DeviceDataES{
 			DID: deviceData.DID,
@@ -143,11 +171,40 @@ func (dr *DevicesRepo) RegisterDeviceData(ctx context.Context, deviceData domain
 			Timestamp: time.Unix(data.Timestamp, 0).Format(time.RFC3339),
 		}
 
-		_, err := dr.client.Index().Index(dataIndex).BodyJson(dataES).Do(ctx)
+		dataDocID := fmt.Sprintf("%v_%v", deviceData.DID, data.Timestamp)
+
+		_, err := dr.client.Index().Index(dataIndex).Id(dataDocID).BodyJson(dataES).Do(ctx)
+		if err != nil {
+			return err
+		}
+
+		if data.Timestamp > maxLastSeenTimestamp {
+			maxLastSeenTimestamp = data.Timestamp
+		}
+	}
+
+	// Update the last seen timestamp field of the device info document with the last max seen timestamp.
+	if maxLastSeenTimestamp > 0 {
+		updatedData := map[string]interface{} {
+			lastSeenTimestampField: maxLastSeenTimestamp,
+		}
+
+		_, err := dr.client.Update().Index(infoIndex).Id(deviceData.DID).Doc(updatedData).Do(ctx)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (dr *DevicesRepo) checkExistingDevice(ctx context.Context, did string) (bool, error) {
+	_, err := dr.client.Get().Index(infoIndex).Id(did).Do(ctx)
+	if err != nil {
+		if elastic.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

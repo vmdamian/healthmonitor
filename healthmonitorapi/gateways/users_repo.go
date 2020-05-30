@@ -32,7 +32,8 @@ type UsersRepo struct {
 func NewUsersRepo(host string) *UsersRepo {
 	cluster := gocql.NewCluster(host)
 	cluster.Keyspace = keyspace
-	cluster.ConnectTimeout = time.Second * 10
+	cluster.ConnectTimeout = time.Second * 30 // Timeout for initial connection
+	cluster.Timeout = time.Second * 30 // Timeout for queries
 
 	return &UsersRepo{
 		Cluster: cluster,
@@ -90,7 +91,6 @@ func (ur *UsersRepo) LoginUser(ctx context.Context, username string, cryptedPass
 	return true, newToken, nil
 }
 
-//TODO: Make this accept a token instead of username and password.
 func (ur *UsersRepo) AuthToken(ctx context.Context, token string) (bool, error) {
 	var receivedUsername string
 

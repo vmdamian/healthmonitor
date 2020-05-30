@@ -60,6 +60,7 @@ func (d *Device) Stop() {
 func (d *Device) createDevice() bool {
 	deviceInfo := &domain.DeviceInfo{
 		DID: d.did,
+		LastSeenTimestamp: time.Now().Unix(),
 	}
 
 	bodyBytes, err := json.Marshal(deviceInfo)
