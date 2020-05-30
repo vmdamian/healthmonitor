@@ -10,6 +10,8 @@
 /healthmonitorui/yarn-debug.log*
 /healthmonitorui/yarn-error.log*
 
+/healthmonitordata
+
 # Editor directories and files
 /.idea
 /healthmonitorui/.idea

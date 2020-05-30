@@ -18,7 +18,7 @@ services:
         soft: 65536
         hard: 65536
     volumes:
-      - data01:/var/healthmonitor/elasticsearch/data
+      - /home/damian/go/src/healthmonitor/healthmonitordata/elasticsearch/data01:/usr/share/elasticsearch/data
     ports:
       - 9200:9200
     networks:
@@ -42,7 +42,7 @@ services:
         soft: 65536
         hard: 65536
     volumes:
-      - data02:/var/healthmonitor/elasticsearch/data
+      - /home/damian/go/src/healthmonitor/healthmonitordata/elasticsearch/data02:/usr/share/elasticsearch/data
     ports:
       - 9201:9201
     networks:
@@ -66,7 +66,7 @@ services:
         soft: 65536
         hard: 65536
     volumes:
-      - data03:/var/healthmonitor/elasticsearch/data
+      - /home/damian/go/src/healthmonitor/healthmonitordata/elasticsearch/data03:/usr/share/elasticsearch/data
     ports:
       - 9202:9202
     networks:
@@ -82,14 +82,6 @@ services:
       ELASTICSEARCH_HOSTS: http://es01:9200
     networks:
       - elastic
-
-volumes:
-  data01:
-    driver: local
-  data02:
-    driver: local
-  data03:
-    driver: local
 
 networks:
   elastic:
