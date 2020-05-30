@@ -12,12 +12,6 @@ import (
 )
 
 const (
-	healthmonitorAPIURL = "http://127.0.0.1:9000"
-	registerDevicePath = "/healthmonitorapi/entities/devices/info"
-	registerDataPath = "/healthmonitorapi/entities/devices/data"
-
-	contentType = "application/json"
-
 	didPrefix = "testdevice"
 )
 
@@ -34,6 +28,10 @@ func NewDevice(did string, interval time.Duration) *Device {
 		interval: interval,
 		stopChan: make(chan struct{}),
 	}
+}
+
+func (d *Device) GetDID() string {
+	return d.did
 }
 
 func (d *Device) Start(wg *sync.WaitGroup) {

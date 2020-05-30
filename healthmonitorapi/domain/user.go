@@ -17,3 +17,11 @@ type LoginUserRequest struct {
 type LoginUserResponse struct {
 	Token string `json:"token"`
 }
+
+type AddDevicesRequest struct {
+	UserDevices []string `json:"user_devices"`
+}
+
+type GetDevicesResponse struct {
+	UserDevices []string `json:"user_devices"`
+}

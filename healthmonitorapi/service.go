@@ -13,6 +13,8 @@ const (
 
 	registerPath = "/healthmonitorapi/auth/register"
 	loginPath = "/healthmonitorapi/auth/login"
+
+	userDevicesPath = "/healthmonitorapi/entities/users/devices"
 )
 
 type HealthMonitorAPIService struct {
@@ -67,8 +69,12 @@ func (s *HealthMonitorAPIService) registerRoutes() {
 	router.HandleFunc(DeviceDataPath, s.APIHandler.GetDeviceData).Methods("GET")
 	router.HandleFunc(DeviceInfoPath, s.APIHandler.RegisterDeviceInfo).Methods("POST")
 	router.HandleFunc(DeviceDataPath, s.APIHandler.RegisterDeviceData).Methods("POST")
+
 	router.HandleFunc(registerPath, s.APIHandler.RegisterUser).Methods("POST")
 	router.HandleFunc(loginPath, s.APIHandler.LoginUser).Methods("POST")
+
+	router.HandleFunc(userDevicesPath, s.APIHandler.AddDevices).Methods("POST")
+	router.HandleFunc(userDevicesPath, s.APIHandler.GetDevices).Methods("GET")
 
 	s.router = router
 }

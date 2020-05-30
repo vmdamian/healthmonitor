@@ -67,7 +67,7 @@ func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) 
 	auth := req.Header.Get(authorizationHeader)
 	token := strings.TrimPrefix(auth, authorizationType + " ")
 
-	userAuth, err := h.usersRepo.AuthToken(ctx, token)
+	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {
 		log.WithError(err).Errorln("error trying to authenticate token=%v")
 		statusCode = 500
@@ -75,6 +75,18 @@ func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) 
 	}
 
 	if !userAuth {
+		statusCode = 403
+		return
+	}
+
+	userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
+	if err != nil {
+		log.WithError(err).Errorf("error getting devices for user=%v", username)
+		statusCode = 500
+		return
+	}
+
+	if !stringInList(did, userDevices) {
 		statusCode = 403
 		return
 	}
@@ -139,7 +151,7 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 	auth := req.Header.Get(authorizationHeader)
 	token := strings.TrimPrefix(auth, authorizationType + " ")
 
-	userAuth, err := h.usersRepo.AuthToken(ctx, token)
+	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {
 		log.WithError(err).Errorln("error trying to authenticate token=%v", token)
 		statusCode = 500
@@ -147,6 +159,18 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 	}
 
 	if !userAuth {
+		statusCode = 403
+		return
+	}
+
+	userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
+	if err != nil {
+		log.WithError(err).Errorf("error getting devices for user=%v", username)
+		statusCode = 500
+		return
+	}
+
+	if !stringInList(did, userDevices) {
 		statusCode = 403
 		return
 	}
@@ -346,4 +370,147 @@ func (h *APIHandler) LoginUser(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	statusCode = 200
+}
+
+func (h *APIHandler) AddDevices(resp http.ResponseWriter, req *http.Request) {
+	var statusCode int
+
+	defer func() {
+		resp.WriteHeader(statusCode)
+	}()
+
+	auth := req.Header.Get(authorizationHeader)
+	token := strings.TrimPrefix(auth, authorizationType + " ")
+
+	ctx := req.Context()
+
+	log.Infof("got add device request with token=%v")
+
+	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
+	if err != nil {
+		log.WithError(err).Errorln("error trying to authenticate token=%v", token)
+		statusCode = 500
+		return
+	}
+
+	if !userAuth {
+		statusCode = 403
+		return
+	}
+
+	bytes, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.WithError(err).Errorln("error reading add devices request body")
+		statusCode = 500
+		return
+	}
+
+	var addDevicesRequest domain.AddDevicesRequest
+	err = json.Unmarshal(bytes, &addDevicesRequest)
+	if err != nil {
+		log.WithError(err).Errorln("error unmarshalling add devices request body")
+		statusCode = 500
+		return
+	}
+
+	if len(addDevicesRequest.UserDevices) == 0 {
+		statusCode = 400
+		return
+	}
+
+	// TODO: Add this check when user is trying to add devices to another user.
+	//userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
+	//if err != nil {
+	//	log.WithError(err).Errorf("error getting devices for user=%v", username)
+	//	statusCode = 500
+	//	return
+	//}
+	//
+	//if !allStringsInList(addDevicesRequest.UserDevices, userDevices) {
+	//	statusCode = 403
+	//	return
+	//}
+
+	err = h.usersRepo.AddDevicesForUser(ctx, username, addDevicesRequest.UserDevices)
+	if err != nil {
+		log.WithError(err).Errorf("failed to add devices for user=%v devices=%v", username, addDevicesRequest.UserDevices)
+		statusCode = 500
+		return
+	}
+
+	statusCode = 200
+}
+
+func (h *APIHandler) GetDevices(resp http.ResponseWriter, req *http.Request) {
+	var statusCode int
+	var bodyBytes []byte
+
+	defer func() {
+		resp.WriteHeader(statusCode)
+		_, err := resp.Write(bodyBytes)
+		if err != nil {
+			log.WithError(err).Errorln("failed to write device data response")
+		}
+	}()
+
+	ctx := req.Context()
+
+	auth := req.Header.Get(authorizationHeader)
+	token := strings.TrimPrefix(auth, authorizationType + " ")
+
+	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
+	if err != nil {
+		log.WithError(err).Errorln("error trying to authenticate token=%v", token)
+		statusCode = 500
+		return
+	}
+
+	if !userAuth {
+		statusCode = 403
+		return
+	}
+
+	userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
+	if err != nil {
+		log.WithError(err).Errorf("error getting devices for user=%v", username)
+		statusCode = 500
+		return
+	}
+
+	getDevicesResponse := &domain.GetDevicesResponse{
+		UserDevices: userDevices,
+	}
+
+	bodyBytes, err = json.Marshal(getDevicesResponse)
+	if err != nil {
+		log.WithError(err).Errorln("error marshalling login response body")
+		statusCode = 500
+		return
+	}
+
+	statusCode = 200
+}
+
+func stringInList(itemToFind string, items []string) bool {
+	if items == nil {
+		return false
+	}
+
+	for _, item := range items {
+		if itemToFind == item {
+			return true
+		}
+	}
+
+	return false
+}
+
+func allStringsInList(itemsToFind []string, items []string) bool {
+	for _, itemToFind := range itemsToFind {
+		if !stringInList(itemToFind, items) {
+			return false
+		}
+	}
+
+	return true
 }

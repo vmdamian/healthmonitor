@@ -71,7 +71,7 @@ func (dr *DevicesRepo) GetDeviceInfo(ctx context.Context, did string) (*domain.D
 
 	infoLastSeenTimestamp, err := time.Parse(time.RFC3339, infoES.LastSeenTimestamp)
 	if err != nil {
-		log.WithError(err).Errorln("failed to parse device info timestamp")
+		log.WithError(err).Errorln("failed to parse device info timestamp=%v", infoES.LastSeenTimestamp)
 		return nil, err
 	}
 
@@ -186,7 +186,7 @@ func (dr *DevicesRepo) RegisterDeviceData(ctx context.Context, deviceData domain
 	// Update the last seen timestamp field of the device info document with the last max seen timestamp.
 	if maxLastSeenTimestamp > 0 {
 		updatedData := map[string]interface{} {
-			lastSeenTimestampField: maxLastSeenTimestamp,
+			lastSeenTimestampField: time.Unix(maxLastSeenTimestamp, 0).Format(time.RFC3339),
 		}
 
 		_, err := dr.client.Update().Index(infoIndex).Id(deviceData.DID).Doc(updatedData).Do(ctx)

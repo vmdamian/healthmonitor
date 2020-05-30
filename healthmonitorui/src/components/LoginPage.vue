@@ -37,12 +37,15 @@
 
 <script>
   import LineChart from './LineChart.vue'
-  const loginURL = 'http://192.168.92.133:9000/healthmonitorapi/auth/login'
-  const registerURL = 'http://192.168.92.133:9000/healthmonitorapi/auth/register'
-  const deviceDataURL = 'http://192.168.92.133:9000/healthmonitorapi/entities/devices/data'
-  const deviceInfoURL = 'http://192.168.92.133:9000/healthmonitorapi/entities/devices/info'
 
-export default {
+  const baseURL = 'http://192.168.92.133:9000'
+  const loginPath = '/healthmonitorapi/auth/login'
+  const registerPath = '/healthmonitorapi/auth/register'
+  const deviceDataPath = '/healthmonitorapi/entities/devices/data'
+  const deviceInfoPath = '/healthmonitorapi/entities/devices/info'
+  const userDevicesPath = '/healthmonitorapi/entities/users/devices'
+
+  export default {
   name: 'LoginPage',
   components: { LineChart },
   data: function() {
@@ -59,11 +62,9 @@ export default {
       selectedInterval: 1,
 
       possibleDevices: [
-              'testdevice0',
-              'testdevice1'
       ],
 
-      selectedDevice: 'testdevice0',
+      selectedDevice: '',
 
       loginUsername: "",
       loginPassword: "",
@@ -85,14 +86,14 @@ export default {
   },
   methods:{
     registerUser: function() {
-      this.$http.post(registerURL, {
+      this.$http.post(baseURL + registerPath, {
         username: this.registerUsername,
         password: this.registerPassword,
       }).then(function(response) {
         this.registerUsername = ""
         this.registerPassword = ""
         
-        if (response.statusText == "OK") {
+        if (response.statusText === "OK") {
           alert("Register OK!")
         }
       }, function(error) {
@@ -104,8 +105,7 @@ export default {
       });
     },
     loginUser: function() {
-      console.log(this.loginUsername, this.loginPassword)
-      this.$http.post(loginURL, {
+      this.$http.post(baseURL + loginPath, {
         username: this.loginUsername,
         password: this.loginPassword,
       }).then(function(response) {
@@ -114,8 +114,8 @@ export default {
           if (this.token === "") {
             return
           }
-          console.log('got token ' + this.token)
           this.loginOK = true
+          this.getDevicesForUser()
           this.timer = setInterval(this.refreshDeviceData, 5000)
           this.username = this.loginUsername
           this.password = this.loginPassword
@@ -132,11 +132,32 @@ export default {
         } else {
           alert("Login failed due to server error!")
         }
-        console.log(error)
+      });
+    },
+    getDevicesForUser: function() {
+      this.$http.get(baseURL + userDevicesPath, {headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
+        if (response.statusText === "OK") {
+          this.possibleDevices = response.data.user_devices
+          if (this.possibleDevices != null) {
+            if (this.possibleDevices.length > 0) {
+              this.selectedDevice = this.possibleDevices[0]
+            }
+          }
+        }
+      }, function(error){
+        this.loginOK = false;
+        clearInterval(this.timer)
+        if (error.statusText === "Forbidden") {
+          alert("Login failed!")
+        }
       });
     },
     getDeviceInfo: function(){
-      this.$http.get(deviceInfoURL, {params: {did: this.selectedDevice}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
+      if (this.selectedDevice === '') {
+        return
+      }
+
+      this.$http.get(baseURL + deviceInfoPath, {params: {did: this.selectedDevice}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
         if (response.statusText === "OK") {
           this.deviceInfo = response.data
         }
@@ -149,14 +170,15 @@ export default {
       });
     },
     getDeviceData: function(since){
-      this.$http.get(deviceDataURL, {params: { did: this.selectedDevice, since: since}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
+      if (this.selectedDevice === '') {
+        return
+      }
+
+      this.$http.get(baseURL + deviceDataPath, {params: { did: this.selectedDevice, since: since}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
         if (response.statusText === "OK") {
           this.labels = response.data.data.map(datapoint => datapoint.timestamp)
           this.temperatureData = response.data.data.map(datapoint => datapoint.temperature)
           this.heartrateData = response.data.data.map(datapoint => datapoint.heart_rate)
-          console.log(this.labels)
-          console.log(this.temperatureData)
-          console.log(this.heartrateData)
         }
       }, function(error){
         this.loginOK = false;
@@ -167,16 +189,14 @@ export default {
       });
     },
     refreshDeviceData: function() {
+      const nowTimestamp = Math.round(+new Date() / 1000)
+      const minuteAgoTimestamp = nowTimestamp - 60 * this.selectedInterval
 
-      var nowTimestamp = Math.round(+new Date()/1000);
-      var minuteAgoTimestamp = nowTimestamp - 60 * this.selectedInterval
       this.getDeviceInfo()
       this.getDeviceData(minuteAgoTimestamp)
     },
   },
-  mounted: function () {
-
-  },
+  mounted: function () {},
   beforeDestroy: function() {
     clearInterval(this.timer)
   }

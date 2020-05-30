@@ -15,7 +15,9 @@ const (
 	tokensTable = "tokens"
 
 	userPasswordSelectQuery = "SELECT password FROM " + usersTable + " WHERE id = ?"
-	userPasswordInsertQuery = "INSERT INTO " + usersTable + " (id, password) VALUES (?, ?)"
+	userDevicesSelectQuery = "SELECT user_devices FROM " + usersTable + " WHERE id = ?"
+	userPasswordInsertQuery = "INSERT INTO " + usersTable + " (id, password, user_devices) VALUES (?, ?, ?)"
+	userDevicesInsertQuery = "UPDATE " + usersTable + " SET user_devices = user_devices + ? WHERE id = ?"
 
 	userByTokenSelectQuery = "SELECT id FROM " + tokensTable + " WHERE user_token = ? ALLOW FILTERING"
 
@@ -51,7 +53,7 @@ func (ur *UsersRepo) Start() error {
 }
 
 func (ur *UsersRepo) RegisterUser(ctx context.Context, username string, cryptedPassword string) error {
-	err := ur.Session.Query(userPasswordInsertQuery, username, cryptedPassword).WithContext(ctx).Exec()
+	err := ur.Session.Query(userPasswordInsertQuery, username, cryptedPassword, []string{}).WithContext(ctx).Exec()
 	return err
 }
 
@@ -91,15 +93,31 @@ func (ur *UsersRepo) LoginUser(ctx context.Context, username string, cryptedPass
 	return true, newToken, nil
 }
 
-func (ur *UsersRepo) AuthToken(ctx context.Context, token string) (bool, error) {
+func (ur *UsersRepo) AuthToken(ctx context.Context, token string) (string, bool, error) {
 	var receivedUsername string
 
 	err := ur.Session.Query(userByTokenSelectQuery, token).Consistency(gocql.One).WithContext(ctx).Scan(&receivedUsername)
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 
-	return true, nil
+	return receivedUsername, true, nil
+}
+
+func (ur UsersRepo) AddDevicesForUser(ctx context.Context, username string, dids []string) error {
+	err := ur.Session.Query(userDevicesInsertQuery, dids, username).WithContext(ctx).Exec()
+	return err
+}
+
+func (ur *UsersRepo) GetDevicesForUser(ctx context.Context, username string) ([]string, error) {
+	var receivedDevices []string
+
+	err := ur.Session.Query(userDevicesSelectQuery, username).Consistency(gocql.One).WithContext(ctx).Scan(&receivedDevices)
+	if err != nil {
+		return nil, err
+	}
+
+	return receivedDevices, nil
 }
 
 func (ur *UsersRepo) getUserToken(ctx context.Context, username string) (string, error) {
