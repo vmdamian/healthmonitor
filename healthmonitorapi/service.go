@@ -20,6 +20,7 @@ const (
 type HealthMonitorAPIService struct {
 	UsersRepo *gateways.UsersRepo
 	DevicesRepo *gateways.DevicesRepo
+	MessagingRepo *gateways.MessagingRepo
 	APIHandler *gateways.APIHandler
 	config *HealthMonitorAPIServiceConfig
 	router *mux.Router
@@ -28,11 +29,13 @@ type HealthMonitorAPIService struct {
 func NewHealthMonitorAPIService(config *HealthMonitorAPIServiceConfig) *HealthMonitorAPIService {
 	usersRepo := gateways.NewUsersRepo(config.CassandraHost)
 	devicesRepo := gateways.NewDevicesRepo(config.ElasticsearchHost)
-	apiHandler := gateways.NewAPIHandler(usersRepo, devicesRepo, config.PasswordSalt)
+	messagingRepo := gateways.NewMessagingRepo(config.KafkaBrokers)
+	apiHandler := gateways.NewAPIHandler(usersRepo, devicesRepo, messagingRepo, config.PasswordSalt)
 
 	service := &HealthMonitorAPIService{
 		UsersRepo: usersRepo,
 		DevicesRepo: devicesRepo,
+		MessagingRepo: messagingRepo,
 		APIHandler: apiHandler,
 		config: config,
 	}
@@ -51,6 +54,8 @@ func (s *HealthMonitorAPIService) Start() error {
 	if err != nil {
 		return err
 	}
+
+	s.MessagingRepo.Start()
 
 	allowedHeaders := handlers.AllowedHeaders([]string{"Authorization", "Accept", "Accept-Language", "Content-Type", "Content-Language", "Origin"})
 

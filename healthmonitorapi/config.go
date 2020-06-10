@@ -5,4 +5,5 @@ type HealthMonitorAPIServiceConfig struct {
 	PasswordSalt string
 	CassandraHost string
 	ElasticsearchHost string
+	KafkaBrokers []string
 }

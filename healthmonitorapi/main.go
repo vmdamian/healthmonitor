@@ -8,6 +8,7 @@ func main() {
 		PasswordSalt: "720036c8101f751b82cdba6e74fbd217419a2d478dd49f6d7ba6697ed3810ece",
 		CassandraHost: "127.0.0.1",
 		ElasticsearchHost: "http://127.0.0.1:9200",
+		KafkaBrokers: []string{"127.0.0.1:9092"},
 	}
 	service := NewHealthMonitorAPIService(config)
 	err := service.Start()

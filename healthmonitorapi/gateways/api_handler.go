@@ -24,13 +24,15 @@ const (
 type APIHandler struct {
 	usersRepo *UsersRepo
 	devicesRepo *DevicesRepo
+	MessagingRepo *MessagingRepo
 	passwordSalt string
 }
 
-func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, passwordSalt string) *APIHandler {
+func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, messagingRepo *MessagingRepo, passwordSalt string) *APIHandler {
 	return &APIHandler{
 		usersRepo: usersRepo,
 		devicesRepo: devicesRepo,
+		MessagingRepo: messagingRepo,
 		passwordSalt: passwordSalt,
 	}
 }
@@ -256,6 +258,11 @@ func (h *APIHandler) RegisterDeviceData(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
+	err = h.MessagingRepo.SendValidationRequest(ctx, deviceDatasetRequest.DID)
+	if err != nil {
+		log.WithError(err).Errorf("error sending a validation request for did=%v", deviceDatasetRequest.DID)
+	}
+
 	statusCode = 200
 }
 
@@ -383,8 +390,6 @@ func (h *APIHandler) AddDevices(resp http.ResponseWriter, req *http.Request) {
 	token := strings.TrimPrefix(auth, authorizationType + " ")
 
 	ctx := req.Context()
-
-	log.Infof("got add device request with token=%v")
 
 	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {
