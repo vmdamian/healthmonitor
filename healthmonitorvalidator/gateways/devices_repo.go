@@ -10,18 +10,18 @@ import (
 )
 
 const (
-	dataIndex = "device-data"
+	dataIndex   = "device-data"
 	alertsIndex = "device-alerts"
 
-	didField = "did"
-	timestampField = "timestamp"
+	didField                 = "did"
+	timestampField           = "timestamp"
 	lastActiveTimestampField = "last_active_timestamp"
-	resolvedTimestampField = "resolved_timestamp"
-	statusField = "status"
+	resolvedTimestampField   = "resolved_timestamp"
+	statusField              = "status"
 )
 
 type DevicesRepo struct {
-	host string
+	host   string
 	client *elastic.Client
 }
 
@@ -53,7 +53,7 @@ func (dr *DevicesRepo) GetDeviceData(ctx context.Context, did string, since time
 	}
 
 	dataset := &domain.DeviceDataset{
-		DID: did,
+		DID:  did,
 		Data: make([]*domain.DeviceData, 0, len(res.Hits.Hits)),
 	}
 	for _, hit := range res.Hits.Hits {
@@ -73,8 +73,8 @@ func (dr *DevicesRepo) GetDeviceData(ctx context.Context, did string, since time
 
 		data := &domain.DeviceData{
 			Temperature: dataES.Temperature,
-			Heartrate: dataES.Heartrate,
-			Timestamp: dataTimestamp.Unix(),
+			Heartrate:   dataES.Heartrate,
+			Timestamp:   dataTimestamp.Unix(),
 		}
 
 		dataset.Data = append(dataset.Data, data)
@@ -122,12 +122,12 @@ func (dr *DevicesRepo) GetDeviceAlerts(ctx context.Context, did string, status s
 		}
 
 		alert := &domain.Alert{
-			DID: alertES.DID,
-			Status: alertES.Status,
-			AlertType: alertES.AlertType,
-			CreatedTimestamp: createdTimestmap,
+			DID:                 alertES.DID,
+			Status:              alertES.Status,
+			AlertType:           alertES.AlertType,
+			CreatedTimestamp:    createdTimestmap,
 			LastActiveTimestamp: lastActiveTimestamp,
-			ResolvedTimestamp: resolvedTimestamp,
+			ResolvedTimestamp:   resolvedTimestamp,
 		}
 
 		alerts = append(alerts, alert)
@@ -140,12 +140,12 @@ func (dr *DevicesRepo) UpsertAlerts(ctx context.Context, alertUpdates []*domain.
 	for _, alertUpdate := range alertUpdates {
 		if alertUpdate.UpdateType == domain.ALERT_UPDATE_TYPE_CREATED {
 			alertES := domain.AlertES{
-				DID: alertUpdate.Alert.DID,
-				AlertType: alertUpdate.Alert.AlertType,
-				Status: alertUpdate.Alert.Status,
-				CreatedTimestamp: alertUpdate.Alert.CreatedTimestamp.Format(time.RFC3339),
+				DID:                 alertUpdate.Alert.DID,
+				AlertType:           alertUpdate.Alert.AlertType,
+				Status:              alertUpdate.Alert.Status,
+				CreatedTimestamp:    alertUpdate.Alert.CreatedTimestamp.Format(time.RFC3339),
 				LastActiveTimestamp: alertUpdate.Alert.LastActiveTimestamp.Format(time.RFC3339),
-				ResolvedTimestamp: alertUpdate.Alert.ResolvedTimestamp.Format(time.RFC3339),
+				ResolvedTimestamp:   alertUpdate.Alert.ResolvedTimestamp.Format(time.RFC3339),
 			}
 
 			_, err := dr.client.Index().Index(alertsIndex).Id(alertUpdate.DocID).BodyJson(alertES).Do(ctx)
@@ -153,7 +153,7 @@ func (dr *DevicesRepo) UpsertAlerts(ctx context.Context, alertUpdates []*domain.
 				return err
 			}
 		} else if alertUpdate.UpdateType == domain.ALERT_UPDATE_TYPE_CONTINUED {
-			updatedData := map[string]interface{} {
+			updatedData := map[string]interface{}{
 				lastActiveTimestampField: alertUpdate.Alert.LastActiveTimestamp.Format(time.RFC3339),
 			}
 
@@ -162,8 +162,8 @@ func (dr *DevicesRepo) UpsertAlerts(ctx context.Context, alertUpdates []*domain.
 				return err
 			}
 		} else if alertUpdate.UpdateType == domain.ALERT_UPDATE_TYPE_RESOLVED {
-			updatedData := map[string]interface{} {
-				statusField: alertUpdate.Alert.Status,
+			updatedData := map[string]interface{}{
+				statusField:            alertUpdate.Alert.Status,
 				resolvedTimestampField: alertUpdate.Alert.ResolvedTimestamp.Format(time.RFC3339),
 			}
 

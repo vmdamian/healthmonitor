@@ -15,25 +15,25 @@ import (
 
 const (
 	authorizationHeader = "Authorization"
-	authorizationType = "Bearer"
+	authorizationType   = "Bearer"
 
-	didQueryParam = "did"
+	didQueryParam   = "did"
 	sinceQueryParam = "since"
 )
 
 type APIHandler struct {
-	usersRepo *UsersRepo
-	devicesRepo *DevicesRepo
+	usersRepo     *UsersRepo
+	devicesRepo   *DevicesRepo
 	MessagingRepo *MessagingRepo
-	passwordSalt string
+	passwordSalt  string
 }
 
 func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, messagingRepo *MessagingRepo, passwordSalt string) *APIHandler {
 	return &APIHandler{
-		usersRepo: usersRepo,
-		devicesRepo: devicesRepo,
+		usersRepo:     usersRepo,
+		devicesRepo:   devicesRepo,
 		MessagingRepo: messagingRepo,
-		passwordSalt: passwordSalt,
+		passwordSalt:  passwordSalt,
 	}
 }
 
@@ -67,7 +67,7 @@ func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) 
 	}
 
 	auth := req.Header.Get(authorizationHeader)
-	token := strings.TrimPrefix(auth, authorizationType + " ")
+	token := strings.TrimPrefix(auth, authorizationType+" ")
 
 	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {
@@ -151,7 +151,7 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 	sinceTime := time.Unix(sinceTimestamp, 0)
 
 	auth := req.Header.Get(authorizationHeader)
-	token := strings.TrimPrefix(auth, authorizationType + " ")
+	token := strings.TrimPrefix(auth, authorizationType+" ")
 
 	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {
@@ -295,7 +295,7 @@ func (h *APIHandler) RegisterUser(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	saltedPassword  := registerUserRequest.Password + h.passwordSalt
+	saltedPassword := registerUserRequest.Password + h.passwordSalt
 	hashedPassword := sha256.Sum256([]byte(saltedPassword))
 	cryptedPassword := hex.EncodeToString(hashedPassword[:])
 
@@ -349,7 +349,7 @@ func (h *APIHandler) LoginUser(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	saltedPassword  := loginUserRequest.Password + h.passwordSalt
+	saltedPassword := loginUserRequest.Password + h.passwordSalt
 	hashedPassword := sha256.Sum256([]byte(saltedPassword))
 	cryptedPassword := hex.EncodeToString(hashedPassword[:])
 
@@ -387,7 +387,7 @@ func (h *APIHandler) AddDevices(resp http.ResponseWriter, req *http.Request) {
 	}()
 
 	auth := req.Header.Get(authorizationHeader)
-	token := strings.TrimPrefix(auth, authorizationType + " ")
+	token := strings.TrimPrefix(auth, authorizationType+" ")
 
 	ctx := req.Context()
 
@@ -461,7 +461,7 @@ func (h *APIHandler) GetDevices(resp http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 
 	auth := req.Header.Get(authorizationHeader)
-	token := strings.TrimPrefix(auth, authorizationType + " ")
+	token := strings.TrimPrefix(auth, authorizationType+" ")
 
 	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {

@@ -8,13 +8,13 @@ import (
 
 type TemperatureValidator struct {
 	HighMargin float32
-	LowMargin float32
+	LowMargin  float32
 }
 
 func NewTemperatureValidator(lowMargin float32, highMargin float32) *TemperatureValidator {
 	return &TemperatureValidator{
 		HighMargin: highMargin,
-		LowMargin: lowMargin,
+		LowMargin:  lowMargin,
 	}
 }
 
@@ -29,10 +29,10 @@ func (tv *TemperatureValidator) CheckData(dataSet *domain.DeviceDataset) []*doma
 		if dataPoint.Temperature >= tv.HighMargin {
 			if currentAlert == nil {
 				currentAlert = &domain.Alert{
-					DID: dataSet.DID,
-					AlertType: domain.ALERT_TYPE_TEMP_HIGH,
-					Status: domain.ALERT_STATUS_ACTIVE,
-					CreatedTimestamp: time.Unix(dataPoint.Timestamp, 0),
+					DID:                 dataSet.DID,
+					AlertType:           domain.ALERT_TYPE_TEMP_HIGH,
+					Status:              domain.ALERT_STATUS_ACTIVE,
+					CreatedTimestamp:    time.Unix(dataPoint.Timestamp, 0),
 					LastActiveTimestamp: time.Unix(dataPoint.Timestamp, 0),
 				}
 			} else {
@@ -57,10 +57,10 @@ func (tv *TemperatureValidator) CheckData(dataSet *domain.DeviceDataset) []*doma
 		if dataPoint.Temperature <= tv.LowMargin {
 			if currentAlert == nil {
 				currentAlert = &domain.Alert{
-					DID: dataSet.DID,
-					AlertType: domain.ALERT_TYPE_TEMP_LOW,
-					Status: domain.ALERT_STATUS_ACTIVE,
-					CreatedTimestamp: time.Unix(dataPoint.Timestamp, 0),
+					DID:                 dataSet.DID,
+					AlertType:           domain.ALERT_TYPE_TEMP_LOW,
+					Status:              domain.ALERT_STATUS_ACTIVE,
+					CreatedTimestamp:    time.Unix(dataPoint.Timestamp, 0),
 					LastActiveTimestamp: time.Unix(dataPoint.Timestamp, 0),
 				}
 			} else {
@@ -81,16 +81,16 @@ func (tv *TemperatureValidator) CheckData(dataSet *domain.DeviceDataset) []*doma
 	}
 
 	if len(highValueAlerts) > 0 {
-		resultAlerts = append(resultAlerts, highValueAlerts[len(highValueAlerts) - 1])
+		resultAlerts = append(resultAlerts, highValueAlerts[len(highValueAlerts)-1])
 	}
 
 	if len(lowValueAlerts) > 0 {
-		resultAlerts = append(resultAlerts, lowValueAlerts[len(lowValueAlerts) - 1])
+		resultAlerts = append(resultAlerts, lowValueAlerts[len(lowValueAlerts)-1])
 	}
 
 	if len(highValueAlerts) > 0 && len(lowValueAlerts) > 0 {
-		lowAlert := lowValueAlerts[len(lowValueAlerts) - 1]
-		highAlert := highValueAlerts[len(highValueAlerts) - 1]
+		lowAlert := lowValueAlerts[len(lowValueAlerts)-1]
+		highAlert := highValueAlerts[len(highValueAlerts)-1]
 
 		if lowAlert.Status == domain.ALERT_STATUS_ACTIVE && highAlert.Status == domain.ALERT_STATUS_ACTIVE {
 			log.Warnf("got two active alerts for temperature for low and high values for did %v", dataSet.DID)

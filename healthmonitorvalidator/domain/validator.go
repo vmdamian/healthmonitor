@@ -4,7 +4,7 @@ import "time"
 
 type DataPoint struct {
 	timestamp time.Time
-	value float64
+	value     float64
 }
 
 type Validator interface {

@@ -10,26 +10,26 @@ import (
 )
 
 type AlertGenerator struct {
-	validators []domain.Validator
-	devicesRepo *gateways.DevicesRepo
-	alertSender *gateways.AlertSender
+	validators       []domain.Validator
+	devicesRepo      *gateways.DevicesRepo
+	alertSender      *gateways.AlertSender
 	validationPeriod time.Duration
 
-	alertCreated bool
+	alertCreated   bool
 	alertContinued bool
-	alertResolved bool
+	alertResolved  bool
 }
 
 func NewAlertGenerator(validators []domain.Validator, devicesRepo *gateways.DevicesRepo, alertSender *gateways.AlertSender, validationPeriod time.Duration,
 	alertCreated, alertContinued, alertResolved bool) *AlertGenerator {
 	return &AlertGenerator{
-		validators: validators,
-		devicesRepo: devicesRepo,
-		alertSender: alertSender,
+		validators:       validators,
+		devicesRepo:      devicesRepo,
+		alertSender:      alertSender,
 		validationPeriod: validationPeriod,
-		alertCreated: alertCreated,
-		alertContinued: alertContinued,
-		alertResolved: alertResolved,
+		alertCreated:     alertCreated,
+		alertContinued:   alertContinued,
+		alertResolved:    alertResolved,
 	}
 }
 
@@ -150,14 +150,14 @@ func getAlertUpdates(activeAlerts []*domain.Alert, newAlerts []*domain.Alert) []
 
 			update := &domain.AlertUpdate{
 				UpdateType: domain.ALERT_UPDATE_TYPE_RESOLVED,
-				DocID: fmt.Sprintf("%v_%v_%v", newAlert.DID, newAlert.AlertType, activeAlert.CreatedTimestamp.Unix()),
+				DocID:      fmt.Sprintf("%v_%v_%v", newAlert.DID, newAlert.AlertType, activeAlert.CreatedTimestamp.Unix()),
 				Alert: &domain.Alert{
-					DID: newAlert.DID,
-					AlertType: newAlert.AlertType,
-					Status: newAlert.Status,
-					CreatedTimestamp: activeAlert.CreatedTimestamp,
+					DID:                 newAlert.DID,
+					AlertType:           newAlert.AlertType,
+					Status:              newAlert.Status,
+					CreatedTimestamp:    activeAlert.CreatedTimestamp,
 					LastActiveTimestamp: newAlert.LastActiveTimestamp,
-					ResolvedTimestamp: newAlert.ResolvedTimestamp,
+					ResolvedTimestamp:   newAlert.ResolvedTimestamp,
 				},
 			}
 
@@ -167,14 +167,14 @@ func getAlertUpdates(activeAlerts []*domain.Alert, newAlerts []*domain.Alert) []
 
 			update := &domain.AlertUpdate{
 				UpdateType: domain.ALERT_UPDATE_TYPE_CREATED,
-				DocID: fmt.Sprintf("%v_%v_%v", newAlert.DID, newAlert.AlertType, newAlert.CreatedTimestamp.Unix()),
+				DocID:      fmt.Sprintf("%v_%v_%v", newAlert.DID, newAlert.AlertType, newAlert.CreatedTimestamp.Unix()),
 				Alert: &domain.Alert{
-					DID: newAlert.DID,
-					AlertType: newAlert.AlertType,
-					Status: newAlert.Status,
-					CreatedTimestamp: newAlert.CreatedTimestamp,
+					DID:                 newAlert.DID,
+					AlertType:           newAlert.AlertType,
+					Status:              newAlert.Status,
+					CreatedTimestamp:    newAlert.CreatedTimestamp,
 					LastActiveTimestamp: newAlert.LastActiveTimestamp,
-					ResolvedTimestamp: newAlert.ResolvedTimestamp,
+					ResolvedTimestamp:   newAlert.ResolvedTimestamp,
 				},
 			}
 

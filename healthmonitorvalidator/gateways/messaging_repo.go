@@ -10,39 +10,39 @@ import (
 )
 
 const (
-	topicName = "healthmonitor.validation.requests"
+	topicName         = "healthmonitor.validation.requests"
 	consumerGroupName = "healthmonitorvalidator"
 )
 
 type MessageHandler func(context.Context, string) error
 
 type MessagingRepo struct {
-	brokers []string
-	reader *kafka.Reader
+	brokers        []string
+	reader         *kafka.Reader
 	messageHandler MessageHandler
-	wg sync.WaitGroup
+	wg             sync.WaitGroup
 }
 
 func NewMessagingRepo(brokers []string, messageHandler MessageHandler) *MessagingRepo {
 	return &MessagingRepo{
-		brokers: brokers,
+		brokers:        brokers,
 		messageHandler: messageHandler,
-		wg: sync.WaitGroup{},
+		wg:             sync.WaitGroup{},
 	}
 }
 
 func (mr *MessagingRepo) Start(ctx context.Context) {
 
 	dialer := &kafka.Dialer{
-		Timeout: 10 * time.Second,
+		Timeout:   10 * time.Second,
 		DualStack: true,
 	}
 
 	config := kafka.ReaderConfig{
 		Brokers: mr.brokers,
-		Topic: topicName,
+		Topic:   topicName,
 		GroupID: consumerGroupName,
-		Dialer: dialer,
+		Dialer:  dialer,
 	}
 
 	mr.reader = kafka.NewReader(config)

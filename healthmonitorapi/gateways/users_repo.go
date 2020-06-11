@@ -11,13 +11,13 @@ import (
 const (
 	keyspace = "healthmonitor"
 
-	usersTable = "users"
+	usersTable  = "users"
 	tokensTable = "tokens"
 
 	userPasswordSelectQuery = "SELECT password FROM " + usersTable + " WHERE id = ?"
-	userDevicesSelectQuery = "SELECT user_devices FROM " + usersTable + " WHERE id = ?"
+	userDevicesSelectQuery  = "SELECT user_devices FROM " + usersTable + " WHERE id = ?"
 	userPasswordInsertQuery = "INSERT INTO " + usersTable + " (id, password, user_devices) VALUES (?, ?, ?)"
-	userDevicesInsertQuery = "UPDATE " + usersTable + " SET user_devices = user_devices + ? WHERE id = ?"
+	userDevicesInsertQuery  = "UPDATE " + usersTable + " SET user_devices = user_devices + ? WHERE id = ?"
 
 	userByTokenSelectQuery = "SELECT id FROM " + tokensTable + " WHERE user_token = ? ALLOW FILTERING"
 
@@ -35,7 +35,7 @@ func NewUsersRepo(host string) *UsersRepo {
 	cluster := gocql.NewCluster(host)
 	cluster.Keyspace = keyspace
 	cluster.ConnectTimeout = time.Second * 30 // Timeout for initial connection
-	cluster.Timeout = time.Second * 30 // Timeout for queries
+	cluster.Timeout = time.Second * 30        // Timeout for queries
 
 	return &UsersRepo{
 		Cluster: cluster,
@@ -140,4 +140,3 @@ func (ur *UsersRepo) deleteUserToken(ctx context.Context, username string) error
 	err := ur.Session.Query(userTokenDeleteQuery, username).Consistency(gocql.One).WithContext(ctx).Exec()
 	return err
 }
-

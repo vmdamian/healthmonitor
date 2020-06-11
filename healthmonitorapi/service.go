@@ -12,18 +12,18 @@ const (
 	DeviceDataPath = "/healthmonitorapi/entities/devices/data"
 
 	registerPath = "/healthmonitorapi/auth/register"
-	loginPath = "/healthmonitorapi/auth/login"
+	loginPath    = "/healthmonitorapi/auth/login"
 
 	userDevicesPath = "/healthmonitorapi/entities/users/devices"
 )
 
 type HealthMonitorAPIService struct {
-	UsersRepo *gateways.UsersRepo
-	DevicesRepo *gateways.DevicesRepo
+	UsersRepo     *gateways.UsersRepo
+	DevicesRepo   *gateways.DevicesRepo
 	MessagingRepo *gateways.MessagingRepo
-	APIHandler *gateways.APIHandler
-	config *HealthMonitorAPIServiceConfig
-	router *mux.Router
+	APIHandler    *gateways.APIHandler
+	config        *HealthMonitorAPIServiceConfig
+	router        *mux.Router
 }
 
 func NewHealthMonitorAPIService(config *HealthMonitorAPIServiceConfig) *HealthMonitorAPIService {
@@ -33,11 +33,11 @@ func NewHealthMonitorAPIService(config *HealthMonitorAPIServiceConfig) *HealthMo
 	apiHandler := gateways.NewAPIHandler(usersRepo, devicesRepo, messagingRepo, config.PasswordSalt)
 
 	service := &HealthMonitorAPIService{
-		UsersRepo: usersRepo,
-		DevicesRepo: devicesRepo,
+		UsersRepo:     usersRepo,
+		DevicesRepo:   devicesRepo,
 		MessagingRepo: messagingRepo,
-		APIHandler: apiHandler,
-		config: config,
+		APIHandler:    apiHandler,
+		config:        config,
 	}
 
 	service.registerRoutes()
@@ -59,7 +59,7 @@ func (s *HealthMonitorAPIService) Start() error {
 
 	allowedHeaders := handlers.AllowedHeaders([]string{"Authorization", "Accept", "Accept-Language", "Content-Type", "Content-Language", "Origin"})
 
-	err = http.ListenAndServe(":" + s.config.Port, handlers.CORS(allowedHeaders)(s.router))
+	err = http.ListenAndServe(":"+s.config.Port, handlers.CORS(allowedHeaders)(s.router))
 	if err != nil {
 		return err
 	}

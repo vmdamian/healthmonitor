@@ -12,7 +12,7 @@ const (
 
 type MessagingRepo struct {
 	brokers []string
-	writer *kafka.Writer
+	writer  *kafka.Writer
 }
 
 func NewMessagingRepo(brokers []string) *MessagingRepo {
@@ -24,9 +24,9 @@ func NewMessagingRepo(brokers []string) *MessagingRepo {
 func (mr *MessagingRepo) Start() {
 
 	config := kafka.WriterConfig{
-		Brokers: mr.brokers,
-		Topic: topicName,
-		Balancer: &kafka.Murmur2Balancer{},
+		Brokers:          mr.brokers,
+		Topic:            topicName,
+		Balancer:         &kafka.Murmur2Balancer{},
 		CompressionCodec: snappy.NewCompressionCodec(),
 	}
 
@@ -39,7 +39,7 @@ func (mr *MessagingRepo) Stop() {
 
 func (mr *MessagingRepo) SendValidationRequest(ctx context.Context, did string) error {
 	message := kafka.Message{
-		Key: []byte(did),
+		Key:   []byte(did),
 		Value: []byte(did),
 	}
 

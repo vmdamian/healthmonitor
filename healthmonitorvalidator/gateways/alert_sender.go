@@ -10,24 +10,24 @@ import (
 )
 
 type AlertSender struct {
-	accountSID string
-	authToken string
+	accountSID  string
+	authToken   string
 	phoneNumber string
-	url string
+	url         string
 }
 
 const (
 	alertGreetingFormat = "WARNING! You have active alerts for device %v from HEALTHMONITOR!\n"
-	alertRowHeader = "ALERT_TYPE --- STATUS --- START TIME\n"
-	alertRowFormat = "%v --- %v --- %v\n"
+	alertRowHeader      = "ALERT_TYPE --- STATUS --- START TIME\n"
+	alertRowFormat      = "%v --- %v --- %v\n"
 )
 
 func NewAlertSender(accountSID string, authToken string, phoneNumber string) *AlertSender {
 	return &AlertSender{
-		accountSID: accountSID,
-		authToken: authToken,
+		accountSID:  accountSID,
+		authToken:   authToken,
 		phoneNumber: phoneNumber,
-		url: "https://api.twilio.com/2010-04-01/Accounts/" + accountSID + "/Messages.json",
+		url:         "https://api.twilio.com/2010-04-01/Accounts/" + accountSID + "/Messages.json",
 	}
 }
 

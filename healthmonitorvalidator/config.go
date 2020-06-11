@@ -3,15 +3,15 @@ package main
 import "time"
 
 type HealthMonitorValidatorServiceConfig struct {
-	KafkaBrokers []string
+	KafkaBrokers      []string
 	ElasticsearchHost string
 
-	AlertSenderAccountSID string
-	AlertSenderToken string
+	AlertSenderAccountSID  string
+	AlertSenderToken       string
 	AlertSenderPhoneNumber string
-	ValidationPeriod time.Duration
+	ValidationPeriod       time.Duration
 
-	SendCreatedAlert bool
+	SendCreatedAlert   bool
 	SendContinuedAlert bool
-	SendResolvedAlert bool
+	SendResolvedAlert  bool
 }

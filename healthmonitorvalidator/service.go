@@ -9,8 +9,8 @@ import (
 
 type HealthMonitorValidatorService struct {
 	MessagingRepo *gateways.MessagingRepo
-	DevicesRepo *gateways.DevicesRepo
-	config *HealthMonitorValidatorServiceConfig
+	DevicesRepo   *gateways.DevicesRepo
+	config        *HealthMonitorValidatorServiceConfig
 }
 
 func NewHealthMonitorValidatorService(config *HealthMonitorValidatorServiceConfig) *HealthMonitorValidatorService {
@@ -29,8 +29,8 @@ func NewHealthMonitorValidatorService(config *HealthMonitorValidatorServiceConfi
 
 	service := &HealthMonitorValidatorService{
 		MessagingRepo: messagingRepo,
-		DevicesRepo: devicesRepo,
-		config: config,
+		DevicesRepo:   devicesRepo,
+		config:        config,
 	}
 
 	return service

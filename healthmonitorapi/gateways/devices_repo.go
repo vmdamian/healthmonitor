@@ -15,8 +15,8 @@ const (
 	dataIndex = "device-data"
 	infoIndex = "device-info"
 
-	didField = "did"
-	timestampField = "timestamp"
+	didField               = "did"
+	timestampField         = "timestamp"
 	lastSeenTimestampField = "last_seen_timestamp"
 )
 
@@ -25,7 +25,7 @@ var (
 )
 
 type DevicesRepo struct {
-	host string
+	host   string
 	client *elastic.Client
 }
 
@@ -76,7 +76,7 @@ func (dr *DevicesRepo) GetDeviceInfo(ctx context.Context, did string) (*domain.D
 	}
 
 	return &domain.DeviceInfo{
-		DID: did,
+		DID:               did,
 		LastSeenTimestamp: infoLastSeenTimestamp.Unix(),
 	}, nil
 }
@@ -95,7 +95,7 @@ func (dr *DevicesRepo) RegisterDeviceInfo(ctx context.Context, deviceInfo domain
 
 	// Register new device. Device info document ids are the same as the device id.
 	infoES := domain.DeviceInfoES{
-		DID: deviceInfo.DID,
+		DID:               deviceInfo.DID,
 		LastSeenTimestamp: time.Unix(deviceInfo.LastSeenTimestamp, 0).Format(time.RFC3339),
 	}
 
@@ -118,7 +118,7 @@ func (dr *DevicesRepo) GetDeviceData(ctx context.Context, did string, since time
 	}
 
 	dataset := &domain.DeviceDataset{
-		DID: did,
+		DID:  did,
 		Data: make([]*domain.DeviceData, 0, len(res.Hits.Hits)),
 	}
 	for _, hit := range res.Hits.Hits {
@@ -138,8 +138,8 @@ func (dr *DevicesRepo) GetDeviceData(ctx context.Context, did string, since time
 
 		data := &domain.DeviceData{
 			Temperature: dataES.Temperature,
-			Heartrate: dataES.Heartrate,
-			Timestamp: dataTimestamp.Unix(),
+			Heartrate:   dataES.Heartrate,
+			Timestamp:   dataTimestamp.Unix(),
 		}
 
 		dataset.Data = append(dataset.Data, data)
@@ -165,10 +165,10 @@ func (dr *DevicesRepo) RegisterDeviceData(ctx context.Context, deviceData domain
 	// Insert new data. Data documents ids are of the form "DID_TIMESTAMP"
 	for _, data := range deviceData.Data {
 		dataES := domain.DeviceDataES{
-			DID: deviceData.DID,
-			Temperature:  data.Temperature,
-			Heartrate: data.Heartrate,
-			Timestamp: time.Unix(data.Timestamp, 0).Format(time.RFC3339),
+			DID:         deviceData.DID,
+			Temperature: data.Temperature,
+			Heartrate:   data.Heartrate,
+			Timestamp:   time.Unix(data.Timestamp, 0).Format(time.RFC3339),
 		}
 
 		dataDocID := fmt.Sprintf("%v_%v", deviceData.DID, data.Timestamp)
@@ -185,7 +185,7 @@ func (dr *DevicesRepo) RegisterDeviceData(ctx context.Context, deviceData domain
 
 	// Update the last seen timestamp field of the device info document with the last max seen timestamp.
 	if maxLastSeenTimestamp > 0 {
-		updatedData := map[string]interface{} {
+		updatedData := map[string]interface{}{
 			lastSeenTimestampField: time.Unix(maxLastSeenTimestamp, 0).Format(time.RFC3339),
 		}
 
