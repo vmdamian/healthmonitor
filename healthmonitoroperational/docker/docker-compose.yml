@@ -1,4 +1,11 @@
 version: '2.2'
+
+networks:
+  elastic:
+    driver: bridge
+  kafka-net:
+    driver: bridge
+
 services:
   es01:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.6.2
@@ -83,6 +90,38 @@ services:
     networks:
       - elastic
 
-networks:
-  elastic:
-    driver: bridge
+  cassandra:
+    image: cassandra
+    container_name: cassandra
+    ports:
+      - 9042:9042
+    volumes:
+      - /home/damian/go/src/healthmonitor/healthmonitordata/cassandra/data:/var/lib/cassandra
+
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    container_name: zookeeper
+    networks:
+      - kafka-net
+    ports:
+      - '2181:2181'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    volumes:
+      - /home/damian/go/src/healthmonitor/healthmonitordata/zookeeper/data:/var/lib/zookeeper/data
+
+  kafka:
+    image: 'bitnami/kafka:latest'
+    container_name: kafka
+    networks:
+      - kafka-net
+    ports:
+      - '9092:9092'
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-server:2181
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+    volumes:
+      - /home/damian/go/src/healthmonitor/healthmonitordata/kafka/data:/var/lib/kafka/data

@@ -7,6 +7,7 @@ CREATE KEYSPACE IF NOT EXISTS healthmonitor
 CREATE TABLE IF NOT EXISTS healthmonitor.users (
   id text PRIMARY KEY,
   password text,
+  phone text,
   user_devices set<text>
 );
 

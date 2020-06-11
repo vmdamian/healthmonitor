@@ -7,10 +7,12 @@ PUT /device-info
   "mappings": {
     "properties": {
       "did": {
-        "type": "text"
+        "type": "text",
+        "index": true
       },
       "last_seen_timestamp": {
-        "type": "text"
+        "type": "date",
+        "index": true
       }
     }
   }
@@ -25,16 +27,64 @@ PUT /device-data
   "mappings": {
     "properties": {
       "did": {
-        "type": "text"
+        "type": "text",
+        "index": true
       },
       "timestamp": {
-        "type": "date"
+        "type": "date",
+        "index": true
       },
-      "heartrate": {
-        "type": "text"
+      "heart_rate": {
+        "type": "double",
+        "index": false
+      },
+      "heart_ecg": {
+        "type": "double",
+        "index": false
+      },
+      "spo2": {
+        "type": "double",
+        "index": false
       },
       "temperature": {
-        "type": "text"
+        "type": "double",
+        "index": false
+      }
+    }
+  }
+}
+
+PUT /device-alerts
+{
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 2
+  },
+  "mappings": {
+    "properties": {
+      "did": {
+        "type": "text",
+        "index": true
+      },
+      "status": {
+        "type": "text",
+        "index": true
+      },
+      "created_timestamp": {
+        "type": "date",
+        "index": false
+      },
+      "last_active_timestamp": {
+        "type": "date",
+        "index": false
+      },
+      "resolved_timestamp": {
+        "type": "date",
+        "index": false
+      },
+      "alert_type": {
+        "type": "text",
+        "index": false
       }
     }
   }
