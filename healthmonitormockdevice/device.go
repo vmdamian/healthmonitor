@@ -93,7 +93,7 @@ func (d *Device) generateDeviceData() {
 				DID: d.did,
 				Data: []*domain.DeviceData{
 					{
-						Temperature: generateRandomFloat32(36, 38),
+						Temperature: generateRandomFloat32(33, 41),
 						Heartrate: generateRandomInt64(70, 90),
 						Timestamp: time.Now().Unix(),
 					},

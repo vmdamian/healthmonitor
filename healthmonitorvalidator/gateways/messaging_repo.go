@@ -14,15 +14,19 @@ const (
 	consumerGroupName = "healthmonitorvalidator"
 )
 
+type MessageHandler func(context.Context, string) error
+
 type MessagingRepo struct {
 	brokers []string
 	reader *kafka.Reader
+	messageHandler MessageHandler
 	wg sync.WaitGroup
 }
 
-func NewMessagingRepo(brokers []string) *MessagingRepo {
+func NewMessagingRepo(brokers []string, messageHandler MessageHandler) *MessagingRepo {
 	return &MessagingRepo{
 		brokers: brokers,
+		messageHandler: messageHandler,
 		wg: sync.WaitGroup{},
 	}
 }
@@ -47,10 +51,15 @@ func (mr *MessagingRepo) Start(ctx context.Context) {
 
 	go func() {
 		for {
-			err := mr.receiveValidationRequest(ctx)
+			did, err := mr.receiveValidationRequest(ctx)
 			if err != nil {
 				log.WithError(err).Errorln("failed to receive message")
-				break
+				continue
+			}
+
+			err = mr.messageHandler(ctx, did)
+			if err != nil {
+				log.WithError(err).Errorf("failed to validate message for did=%v", did)
 			}
 		}
 
@@ -64,18 +73,16 @@ func (mr *MessagingRepo) Stop() {
 	_ = mr.reader.Close()
 }
 
-func (mr *MessagingRepo) receiveValidationRequest(ctx context.Context) error {
+func (mr *MessagingRepo) receiveValidationRequest(ctx context.Context) (string, error) {
 	msg, err := mr.reader.FetchMessage(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
-
-	log.Infof("got message %v with key %v on topic %v partition %v offset %v", string(msg.Value), string(msg.Key), msg.Topic, msg.Partition, msg.Offset)
 
 	err = mr.reader.CommitMessages(ctx, msg)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return string(msg.Value), nil
 }
