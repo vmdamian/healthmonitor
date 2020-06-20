@@ -152,31 +152,33 @@ func registerDevicesForUser(username string, password string, dids []string) err
 
 	log.Infof("login ok token=%v", token)
 
-	addDevicesReq := domain.AddDevicesRequest{
-		UserDevices: dids,
-	}
+	for _, did := range dids {
+		addDevicesReq := domain.AddDeleteDevicesRequest{
+			UserDevice: did,
+		}
 
-	bodyBytes, err = json.Marshal(addDevicesReq)
-	if err != nil {
-		return errors.New("failed to marshal add devices request")
-	}
-	reader = bytes.NewReader(bodyBytes)
+		bodyBytes, err = json.Marshal(addDevicesReq)
+		if err != nil {
+			return errors.New("failed to marshal add devices request")
+		}
+		reader = bytes.NewReader(bodyBytes)
 
-	req, err = http.NewRequest("POST", healthmonitorAPIURL + userDevicesPath, reader)
-	if err != nil {
-		return errors.New("failed to create add devices request")
-	}
-	req.Header.Set(authorizationHeader, authorizationType + " " + token)
+		req, err = http.NewRequest("POST", healthmonitorAPIURL + userDevicesPath, reader)
+		if err != nil {
+			return errors.New("failed to create add devices request")
+		}
+		req.Header.Set(authorizationHeader, authorizationType + " " + token)
 
-	resp, err = client.Do(req)
-	if err != nil {
-		return errors.New("failed to do add devices request")
+		resp, err = client.Do(req)
+		if err != nil {
+			return errors.New("failed to do add devices request")
+		}
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			log.Errorf("got status=%v", resp.StatusCode)
+			return errors.New("add devices request was not 200")
+		}
 	}
-	if resp.StatusCode != 200 {
-		log.Errorf("got status=%v", resp.StatusCode)
-		return errors.New("add devices request was not 200")
-	}
-	defer resp.Body.Close()
 
 	return nil
 }

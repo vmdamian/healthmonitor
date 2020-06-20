@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"fmt"
 	"healthmonitor/healthmonitorapi/domain"
 )
 
@@ -48,8 +47,6 @@ func (mv *MinimalistValidator) CheckDataset(dataset *domain.DeviceDataset) []int
 			checkValueAgainstBound(datapoint.ECG, mv.ecgValidationBound),
 			checkValueAgainstBound(datapoint.SPO2, mv.spo2ValidationBound))
 	}
-
-	fmt.Println(validationErrors)
 
 	validationErrors = removeDuplicates(validationErrors)
 	validationErrors = removeValueFromUniquesList(OK_BOUND, validationErrors)

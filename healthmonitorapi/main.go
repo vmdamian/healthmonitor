@@ -1,11 +1,18 @@
 package main
 
 import (
+	"flag"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
 
 func main() {
+
+	es := flag.String("elasticsearch", "http://127.0.0.1:9200", "elasticsearch host")
+	cass := flag.String("cassandra", "127.0.0.1", "cassandra host")
+	kafka := flag.String("kafka","127.0.0.1:9092", "kafka host")
+	flag.Parse()
+
 	boundsConfig := HealthMonitorBoundsConfig{
 		TemperatureMinBound: 34,
 		TemperatureMaxBound: 38,
@@ -18,14 +25,14 @@ func main() {
 	}
 
 	cleanupConfig := HealthMonitorCleanupConfig{
-		CronJobInterval: 24 * time.Hour,
+		CronJobInterval: 1 * time.Hour,
 		MaxDatapointAge: 7 * 24 * time.Hour,
 	}
 
 	dependenciesConfig := HealthMonitorDependenciesConfig{
-		CassandraHost:     "127.0.0.1",
-		ElasticsearchHost: "http://127.0.0.1:9200",
-		KafkaBrokers:      []string{"127.0.0.1:9092"},
+		CassandraHost:     *cass,
+		ElasticsearchHost: *es,
+		KafkaBrokers:      []string{*kafka},
 	}
 
 	config := &HealthMonitorAPIServiceConfig{

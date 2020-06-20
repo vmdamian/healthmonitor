@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
@@ -9,9 +10,13 @@ import (
 func main() {
 	ctx := context.Background()
 
+	es := flag.String("elasticsearch", "http://127.0.0.1:9200", "elasticsearch host")
+	kafka := flag.String("kafka","127.0.0.1:9092", "kafka host")
+	flag.Parse()
+
 	config := &HealthMonitorValidatorServiceConfig{
-		KafkaBrokers:           []string{"127.0.0.1:9092"},
-		ElasticsearchHost:      "http://127.0.0.1:9200",
+		KafkaBrokers:           []string{*kafka},
+		ElasticsearchHost:      *es,
 		AlertSenderAccountSID:  "AC3bc32ab97a438ceee53a2fe0bd873d7a",
 		AlertSenderToken:       "bdefff5e6f7894ae2b30f33fe654139a",
 		AlertSenderPhoneNumber: "+12055519501",

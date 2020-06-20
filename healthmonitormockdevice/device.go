@@ -58,7 +58,7 @@ func (d *Device) Stop() {
 func (d *Device) createDevice() bool {
 	deviceInfo := &domain.DeviceInfo{
 		DID: d.did,
-		LastSeenTimestamp: time.Now().Unix(),
+		LastSeenTimestamp: time.Now(),
 	}
 
 	bodyBytes, err := json.Marshal(deviceInfo)
@@ -93,9 +93,11 @@ func (d *Device) generateDeviceData() {
 				DID: d.did,
 				Data: []*domain.DeviceData{
 					{
-						Temperature: generateRandomFloat32(33, 41),
-						Heartrate: generateRandomInt64(70, 90),
-						Timestamp: time.Now().Unix(),
+						Temperature: generateRandomFloat64(36.5, 41),
+						Heartrate: generateRandomFloat64(70, 90),
+						ECG:  generateRandomFloat64(100, 500),
+						SPO2: generateRandomFloat64(90, 100),
+						Timestamp: time.Now(),
 					},
 				},
 			}
@@ -117,6 +119,8 @@ func (d *Device) generateDeviceData() {
 				log.Errorf("> device %v register device data response was not OK = %v", d.did, resp.StatusCode)
 				return
 			}
+
+			resp.Body.Close()
 		case <- d.stopChan:
 			d.ticker.Stop()
 			return
@@ -124,14 +128,8 @@ func (d *Device) generateDeviceData() {
 	}
 }
 
-func generateRandomFloat32(min float32, max float32) float32 {
+func generateRandomFloat64(min float64, max float64) float64 {
 	rand.Seed(time.Now().UnixNano())
 
-	return min + rand.Float32() * (max - min)
-}
-
-func generateRandomInt64(min int64, max int64) int64 {
-	rand.Seed(time.Now().UnixNano())
-
-	return rand.Int63n(max - min + 1) + min
+	return min + rand.Float64() * (max - min)
 }
