@@ -3,15 +3,14 @@ package usecases
 import (
 	log "github.com/sirupsen/logrus"
 	"healthmonitor/healthmonitorvalidator/domain"
-	"time"
 )
 
 type TemperatureValidator struct {
-	HighMargin float32
-	LowMargin  float32
+	HighMargin float64
+	LowMargin  float64
 }
 
-func NewTemperatureValidator(lowMargin float32, highMargin float32) *TemperatureValidator {
+func NewTemperatureValidator(lowMargin float64, highMargin float64) *TemperatureValidator {
 	return &TemperatureValidator{
 		HighMargin: highMargin,
 		LowMargin:  lowMargin,
@@ -32,16 +31,16 @@ func (tv *TemperatureValidator) CheckData(dataSet *domain.DeviceDataset) []*doma
 					DID:                 dataSet.DID,
 					AlertType:           domain.ALERT_TYPE_TEMP_HIGH,
 					Status:              domain.ALERT_STATUS_ACTIVE,
-					CreatedTimestamp:    time.Unix(dataPoint.Timestamp, 0),
-					LastActiveTimestamp: time.Unix(dataPoint.Timestamp, 0),
+					CreatedTimestamp:    dataPoint.Timestamp,
+					LastActiveTimestamp: dataPoint.Timestamp,
 				}
 			} else {
-				currentAlert.LastActiveTimestamp = time.Unix(dataPoint.Timestamp, 0)
+				currentAlert.LastActiveTimestamp = dataPoint.Timestamp
 			}
 		} else {
 			if currentAlert != nil {
 				currentAlert.Status = domain.ALERT_STATUS_RESOLVED
-				currentAlert.ResolvedTimestamp = time.Unix(dataPoint.Timestamp, 0)
+				currentAlert.ResolvedTimestamp = dataPoint.Timestamp
 				highValueAlerts = append(highValueAlerts, currentAlert)
 				currentAlert = nil
 			}
@@ -60,16 +59,16 @@ func (tv *TemperatureValidator) CheckData(dataSet *domain.DeviceDataset) []*doma
 					DID:                 dataSet.DID,
 					AlertType:           domain.ALERT_TYPE_TEMP_LOW,
 					Status:              domain.ALERT_STATUS_ACTIVE,
-					CreatedTimestamp:    time.Unix(dataPoint.Timestamp, 0),
-					LastActiveTimestamp: time.Unix(dataPoint.Timestamp, 0),
+					CreatedTimestamp:    dataPoint.Timestamp,
+					LastActiveTimestamp: dataPoint.Timestamp,
 				}
 			} else {
-				currentAlert.LastActiveTimestamp = time.Unix(dataPoint.Timestamp, 0)
+				currentAlert.LastActiveTimestamp = dataPoint.Timestamp
 			}
 		} else {
 			if currentAlert != nil {
 				currentAlert.Status = domain.ALERT_STATUS_RESOLVED
-				currentAlert.ResolvedTimestamp = time.Unix(dataPoint.Timestamp, 0)
+				currentAlert.ResolvedTimestamp = dataPoint.Timestamp
 				lowValueAlerts = append(lowValueAlerts, currentAlert)
 				currentAlert = nil
 			}

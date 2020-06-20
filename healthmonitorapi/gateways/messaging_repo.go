@@ -56,10 +56,10 @@ func (mr *MessagingRepo) SendCleanupRequest(ctx context.Context, maxTime string)
 	return mr.writer.WriteMessages(ctx, message)
 }
 
-func (mr *MessagingRepo) SendReportGenerationRequest(ctx context.Context, report_name string) error {
+func (mr *MessagingRepo) SendReportGenerationRequest(ctx context.Context, reportName string) error {
 	message := kafka.Message{
 		Key:   []byte("report_generation"),
-		Value: []byte(fmt.Sprintf("%v_%v", "report_generation", report_name)),
+		Value: []byte(fmt.Sprintf("%v_%v", "report-generation", reportName)),
 	}
 
 	return mr.writer.WriteMessages(ctx, message)

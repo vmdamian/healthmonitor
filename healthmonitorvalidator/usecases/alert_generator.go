@@ -33,7 +33,13 @@ func NewAlertGenerator(validators []domain.Validator, devicesRepo *gateways.Devi
 	}
 }
 
-func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Context, did string) error {
+func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Context, message string) error {
+
+	var did string
+	n, err := fmt.Sscanf(message, "validation_%v", &did)
+	if err != nil || n != 1 {
+		return fmt.Errorf("could not parse did from validation request = %v", message)
+	}
 
 	newAlerts, err := ag.generateAlertsForDevice(ctx, did)
 	if err != nil {
@@ -71,10 +77,22 @@ func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Conte
 		return nil
 	}
 
-	// TODO: Update everything to support phone number for users, getting the users subscripted to a device, etc.
-	err = ag.alertSender.SendAlerts("+40731322853", did, alertsToSend)
+	deviceInfo, err := ag.devicesRepo.GetDeviceInfo(ctx, did)
 	if err != nil {
 		return err
+	}
+
+	var failedPhones []string
+	for _, subscribedPhone := range deviceInfo.SubscribedPhones {
+		err = ag.alertSender.SendAlerts(subscribedPhone, did, alertsToSend)
+		if err != nil {
+			log.WithError(err).Errorf("failed to send notification to phoneNumber=%v", subscribedPhone)
+			failedPhones = append(failedPhones, subscribedPhone)
+		}
+	}
+
+	if len(failedPhones) > 0 {
+		return fmt.Errorf("failed to send notifications to phoneNumbers=%v", failedPhones)
 	}
 
 	return nil

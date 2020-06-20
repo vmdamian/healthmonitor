@@ -5,6 +5,7 @@ import (
 	"github.com/segmentio/kafka-go"
 	_ "github.com/segmentio/kafka-go/snappy"
 	log "github.com/sirupsen/logrus"
+	"strings"
 	"sync"
 	"time"
 )
@@ -17,17 +18,21 @@ const (
 type MessageHandler func(context.Context, string) error
 
 type MessagingRepo struct {
-	brokers        []string
-	reader         *kafka.Reader
-	messageHandler MessageHandler
-	wg             sync.WaitGroup
+	brokers                  []string
+	reader                   *kafka.Reader
+	messageValidationHandler MessageHandler
+	messageCleanupHandler    MessageHandler
+	messageReportHandler     MessageHandler
+	wg                       sync.WaitGroup
 }
 
-func NewMessagingRepo(brokers []string, messageHandler MessageHandler) *MessagingRepo {
+func NewMessagingRepo(brokers []string, messageValidationHandler MessageHandler, messageCleanupHandler MessageHandler, messageReportHandler MessageHandler) *MessagingRepo {
 	return &MessagingRepo{
-		brokers:        brokers,
-		messageHandler: messageHandler,
-		wg:             sync.WaitGroup{},
+		brokers:                  brokers,
+		messageValidationHandler: messageValidationHandler,
+		messageCleanupHandler:    messageCleanupHandler,
+		messageReportHandler:     messageReportHandler,
+		wg:                       sync.WaitGroup{},
 	}
 }
 
@@ -51,15 +56,30 @@ func (mr *MessagingRepo) Start(ctx context.Context) {
 
 	go func() {
 		for {
-			did, err := mr.receiveValidationRequest(ctx)
+			message, err := mr.receiveValidationRequest(ctx)
 			if err != nil {
 				log.WithError(err).Errorln("failed to receive message")
 				continue
 			}
 
-			err = mr.messageHandler(ctx, did)
-			if err != nil {
-				log.WithError(err).Errorf("failed to validate message for did=%v", did)
+			switch {
+			case strings.HasPrefix(message, "validation"):
+				err = mr.messageValidationHandler(ctx, message)
+				if err != nil {
+					log.WithError(err).Errorf("failed to validate message=%v", message)
+				}
+			case strings.HasPrefix(message, "cleanup"):
+				err = mr.messageCleanupHandler(ctx, message)
+				if err != nil {
+					log.WithError(err).Errorf("failed to cleanup for message=%v", message)
+				}
+			case strings.HasPrefix(message, "report-generation"):
+				err = mr.messageReportHandler(ctx, message)
+				if err != nil {
+					log.WithError(err).Errorf("failed to do report generation message=%v", message)
+				}
+			default:
+				log.Errorf("unknown message=%v", message)
 			}
 		}
 
