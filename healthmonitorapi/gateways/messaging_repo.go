@@ -2,6 +2,7 @@ package gateways
 
 import (
 	"context"
+	"fmt"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/snappy"
 )
@@ -40,7 +41,25 @@ func (mr *MessagingRepo) Stop() {
 func (mr *MessagingRepo) SendValidationRequest(ctx context.Context, did string) error {
 	message := kafka.Message{
 		Key:   []byte(did),
-		Value: []byte(did),
+		Value: []byte(fmt.Sprintf("%v_%v", "validation", did)),
+	}
+
+	return mr.writer.WriteMessages(ctx, message)
+}
+
+func (mr *MessagingRepo) SendCleanupRequest(ctx context.Context, maxTime string) error {
+	message := kafka.Message{
+		Key:   []byte("cleanup"),
+		Value: []byte(fmt.Sprintf("%v_%v", "cleanup", maxTime)),
+	}
+
+	return mr.writer.WriteMessages(ctx, message)
+}
+
+func (mr *MessagingRepo) SendReportGenerationRequest(ctx context.Context, report_name string) error {
+	message := kafka.Message{
+		Key:   []byte("report_generation"),
+		Value: []byte(fmt.Sprintf("%v_%v", "report_generation", report_name)),
 	}
 
 	return mr.writer.WriteMessages(ctx, message)

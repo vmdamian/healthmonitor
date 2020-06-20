@@ -4,8 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"healthmonitor/healthmonitorapi/domain"
+	"healthmonitor/healthmonitorapi/usecases/validation"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -25,84 +28,86 @@ type APIHandler struct {
 	usersRepo     *UsersRepo
 	devicesRepo   *DevicesRepo
 	MessagingRepo *MessagingRepo
+	validator     *validation.MinimalistValidator
 	passwordSalt  string
 }
 
-func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, messagingRepo *MessagingRepo, passwordSalt string) *APIHandler {
+func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, messagingRepo *MessagingRepo, validator *validation.MinimalistValidator, passwordSalt string) *APIHandler {
 	return &APIHandler{
 		usersRepo:     usersRepo,
 		devicesRepo:   devicesRepo,
 		MessagingRepo: messagingRepo,
+		validator:     validator,
 		passwordSalt:  passwordSalt,
 	}
 }
 
 func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) {
 	var statusCode int
-	var bodyBytes []byte
+	var info *domain.DeviceInfo
+	var apiErrors []error
+
+	ctx := req.Context()
 
 	defer func() {
+		// Form and write response.
+		infoResp := &domain.DeviceInfoResponse{
+			Info:      info,
+			APIErrors: apiErrors,
+		}
+
+		bodyBytes, err := json.Marshal(infoResp)
+		if err != nil {
+			log.WithError(err).Errorln("failed to marshall device info response")
+			statusCode = 500
+		}
+
 		resp.WriteHeader(statusCode)
-		_, err := resp.Write(bodyBytes)
+		_, err = resp.Write(bodyBytes)
 		if err != nil {
 			log.WithError(err).Errorln("failed to write device data response")
 		}
 	}()
 
-	ctx := req.Context()
-
-	dids := req.URL.Query()[didQueryParam]
-
-	if len(dids) != 1 {
-		log.Errorln("got multiple or 0 dids=%v", dids)
-		statusCode = 400
-		return
-	}
-
-	did := dids[0]
-	if did == "" {
-		log.Errorln("got empty did")
-		statusCode = 400
-		return
-	}
-
-	auth := req.Header.Get(authorizationHeader)
-	token := strings.TrimPrefix(auth, authorizationType+" ")
-
+	// Auth received token.
+	token := getAuthToken(req)
 	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {
-		log.WithError(err).Errorln("error trying to authenticate token=%v")
+		log.WithError(err).Errorf("error trying to authenticate token=%v", token)
 		statusCode = 500
 		return
 	}
-
 	if !userAuth {
+		apiErrors = append(apiErrors, fmt.Errorf("invalid token=%v", token))
 		statusCode = 403
 		return
 	}
 
+	// Validate the received DID.
+	did, err := validateDIDParam(req)
+	if err != nil {
+		apiErrors = append(apiErrors, err)
+		statusCode = 400
+		return
+	}
+
+	// Get devices that the user can access.
 	userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
 	if err != nil {
 		log.WithError(err).Errorf("error getting devices for user=%v", username)
 		statusCode = 500
 		return
 	}
-
 	if !stringInList(did, userDevices) {
+		apiErrors = append(apiErrors, fmt.Errorf("permission denied"))
 		statusCode = 403
 		return
 	}
 
-	info, err := h.devicesRepo.GetDeviceInfo(ctx, did)
+	// Get info for that specific device.
+	info, err = h.devicesRepo.GetDeviceInfo(ctx, did)
 	if err != nil {
 		log.WithError(err).Errorln("error getting device info")
-		statusCode = 500
-		return
-	}
-
-	bodyBytes, err = json.Marshal(info)
-	if err != nil {
-		log.WithError(err).Errorln("failed to marshall device info response")
 		statusCode = 500
 		return
 	}
@@ -112,82 +117,76 @@ func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) 
 
 func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) {
 	var statusCode int
-	var bodyBytes []byte
+	var dataset *domain.DeviceDataset
+	var apiErrors []error
+
+	ctx := req.Context()
 
 	defer func() {
+		// Form and write response.
+		datasetResp := &domain.DeviceDataResponse{
+			Dataset:   dataset,
+			APIErrors: apiErrors,
+		}
+
+		bodyBytes, err := json.Marshal(datasetResp)
+		if err != nil {
+			log.WithError(err).Errorln("failed to marshall device data response")
+			statusCode = 500
+		}
+
 		resp.WriteHeader(statusCode)
-		_, err := resp.Write(bodyBytes)
+		_, err = resp.Write(bodyBytes)
 		if err != nil {
 			log.WithError(err).Errorln("failed to write device data response")
 		}
 	}()
 
-	ctx := req.Context()
-
-	dids := req.URL.Query()[didQueryParam]
-	sinces := req.URL.Query()[sinceQueryParam]
-
-	if len(dids) != 1 || len(sinces) != 1 {
-		statusCode = 400
-		log.Errorln("got multiple or 0 dids or sinces dids=%v sinces=%v", dids, sinces)
-		return
-	}
-
-	did := req.URL.Query()[didQueryParam][0]
-	since := req.URL.Query()[sinceQueryParam][0]
-
-	if did == "" || since == "" {
-		statusCode = 400
-		log.Errorln("did or since is empty did=%v, since=%v", did, since)
-		return
-	}
-
-	sinceTimestamp, err := strconv.ParseInt(since, 10, 64)
-	if err != nil {
-		log.WithError(err).Errorln("error trying to parse since=%v", since)
-		statusCode = 400
-		return
-	}
-	sinceTime := time.Unix(sinceTimestamp, 0)
-
-	auth := req.Header.Get(authorizationHeader)
-	token := strings.TrimPrefix(auth, authorizationType+" ")
-
+	// Auth received token.
+	token := getAuthToken(req)
 	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {
-		log.WithError(err).Errorln("error trying to authenticate token=%v", token)
+		log.WithError(err).Errorf("error trying to authenticate token=%v", token)
 		statusCode = 500
 		return
 	}
-
 	if !userAuth {
+		apiErrors = append(apiErrors, fmt.Errorf("invalid token=%v", token))
 		statusCode = 403
 		return
 	}
 
+	// Validate received params.
+	did, err := validateDIDParam(req)
+	if err != nil {
+		statusCode = 400
+		apiErrors = append(apiErrors, err)
+		return
+	}
+	sinceTime, err := validateSinceParam(req)
+	if err != nil {
+		statusCode = 400
+		apiErrors = append(apiErrors, err)
+		return
+	}
+
+	// Get devices that the user can access.
 	userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
 	if err != nil {
 		log.WithError(err).Errorf("error getting devices for user=%v", username)
 		statusCode = 500
 		return
 	}
-
 	if !stringInList(did, userDevices) {
+		apiErrors = append(apiErrors, fmt.Errorf("permission denied"))
 		statusCode = 403
 		return
 	}
 
-	data, err := h.devicesRepo.GetDeviceData(ctx, did, sinceTime)
+	// Get data for the specific device.
+	dataset, err = h.devicesRepo.GetDeviceData(ctx, did, sinceTime)
 	if err != nil {
 		log.WithError(err).Errorln("error getting device data response")
-		statusCode = 500
-		return
-	}
-	log.Info("got device data of length ", len(data.Data))
-
-	bodyBytes, err = json.Marshal(data)
-	if err != nil {
-		log.WithError(err).Errorln("failed to marshall device data response")
 		statusCode = 500
 		return
 	}
@@ -197,9 +196,26 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 
 func (h *APIHandler) RegisterDeviceInfo(resp http.ResponseWriter, req *http.Request) {
 	var statusCode int
+	var deviceInfo *domain.DeviceInfo
+	var apiErrors []error
 
 	defer func() {
+		registerInfoResp := &domain.RegisterDeviceInfoResponse{
+			DeviceInfo: deviceInfo,
+			APIErrors:  apiErrors,
+		}
+
+		bodyBytes, err := json.Marshal(registerInfoResp)
+		if err != nil {
+			log.WithError(err).Errorln("failed to marshall device data response")
+			statusCode = 500
+		}
+
 		resp.WriteHeader(statusCode)
+		_, err = resp.Write(bodyBytes)
+		if err != nil {
+			log.WithError(err).Errorln("failed to write device data response")
+		}
 	}()
 
 	ctx := req.Context()
@@ -211,15 +227,16 @@ func (h *APIHandler) RegisterDeviceInfo(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	var deviceInfoRequest domain.DeviceInfo
-	err = json.Unmarshal(bodyBytes, &deviceInfoRequest)
+	var registerDeviceRequest domain.RegisterDeviceInfoRequest
+	err = json.Unmarshal(bodyBytes, &registerDeviceRequest)
 	if err != nil {
 		log.WithError(err).Errorln("error unmarshalling register device info request body")
 		statusCode = 500
 		return
 	}
 
-	err = h.devicesRepo.RegisterDeviceInfo(ctx, deviceInfoRequest)
+	did := registerDeviceRequest.DID
+	deviceInfo, err = h.devicesRepo.RegisterDeviceInfo(ctx, did)
 	if err != nil {
 		log.WithError(err).Errorln("error registering device info")
 		statusCode = 500
@@ -231,27 +248,62 @@ func (h *APIHandler) RegisterDeviceInfo(resp http.ResponseWriter, req *http.Requ
 
 func (h *APIHandler) RegisterDeviceData(resp http.ResponseWriter, req *http.Request) {
 	var statusCode int
+	var alertCodes []int
+
 	defer func() {
+		registerDataResp := &domain.RegisterDeviceDataResponse{
+			AlertCodes: alertCodes,
+		}
+
+		bodyBytes, err := json.Marshal(registerDataResp)
+		if err != nil {
+			log.WithError(err).Errorln("failed to marshall device data response")
+			statusCode = 500
+		}
+
 		resp.WriteHeader(statusCode)
+		_, err = resp.Write(bodyBytes)
+		if err != nil {
+			log.WithError(err).Errorln("failed to write device data response")
+		}
 	}()
+
 	ctx := req.Context()
 
 	bodyBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		log.WithError(err).Errorln("error reading register device info request body")
+		log.WithError(err).Errorln("error reading register device data request body")
 		statusCode = 500
 		return
 	}
-
-	var deviceDatasetRequest domain.DeviceDataset
+	var deviceDatasetRequest domain.DeviceDatasetAPI
 	err = json.Unmarshal(bodyBytes, &deviceDatasetRequest)
 	if err != nil {
-		log.WithError(err).Errorln("error unmarshalling register device info request body")
+		log.WithError(err).Errorln("error unmarshalling register device data request body")
 		statusCode = 500
 		return
 	}
 
-	err = h.devicesRepo.RegisterDeviceData(ctx, deviceDatasetRequest)
+	var deviceDataset domain.DeviceDataset
+	deviceDataset.DID = deviceDatasetRequest.DID
+	for _, data := range deviceDatasetRequest.Data {
+		timestamp, err := time.Parse(time.RFC3339, data.Timestamp)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		parsedData := &domain.DeviceData{
+			DID:         data.DID,
+			Timestamp:   timestamp,
+			Temperature: data.Temperature,
+			Heartrate:   data.Heartrate,
+			ECG:         data.Heartrate,
+			SPO2:        data.SPO2,
+		}
+		deviceDataset.Data = append(deviceDataset.Data, parsedData)
+	}
+
+	err = h.devicesRepo.RegisterDeviceData(ctx, deviceDataset)
 	if err != nil {
 		log.WithError(err).Errorln("error registering device info")
 		statusCode = 500
@@ -263,16 +315,30 @@ func (h *APIHandler) RegisterDeviceData(resp http.ResponseWriter, req *http.Requ
 		log.WithError(err).Errorf("error sending a validation request for did=%v", deviceDatasetRequest.DID)
 	}
 
+	alertCodes = h.validator.CheckDataset(&deviceDataset)
+
 	statusCode = 200
 }
 
 func (h *APIHandler) RegisterUser(resp http.ResponseWriter, req *http.Request) {
 	var statusCode int
-	var bodyBytes []byte
+	var username string
+	var apiErrors []error
 
 	defer func() {
+		registerUserResponse := &domain.RegisterUserResponse{
+			Username:  username,
+			APIErrors: apiErrors,
+		}
+
+		bodyBytes, err := json.Marshal(registerUserResponse)
+		if err != nil {
+			log.WithError(err).Errorln("error marshalling register response body")
+			statusCode = 500
+		}
+
 		resp.WriteHeader(statusCode)
-		_, err := resp.Write(bodyBytes)
+		_, err = resp.Write(bodyBytes)
 		if err != nil {
 			log.WithError(err).Errorln("failed to write device data response")
 		}
@@ -286,7 +352,6 @@ func (h *APIHandler) RegisterUser(resp http.ResponseWriter, req *http.Request) {
 		statusCode = 500
 		return
 	}
-
 	var registerUserRequest domain.RegisterUserRequest
 	err = json.Unmarshal(bytes, &registerUserRequest)
 	if err != nil {
@@ -294,25 +359,11 @@ func (h *APIHandler) RegisterUser(resp http.ResponseWriter, req *http.Request) {
 		statusCode = 500
 		return
 	}
+	username = registerUserRequest.Username
 
-	saltedPassword := registerUserRequest.Password + h.passwordSalt
-	hashedPassword := sha256.Sum256([]byte(saltedPassword))
-	cryptedPassword := hex.EncodeToString(hashedPassword[:])
-
-	err = h.usersRepo.RegisterUser(ctx, registerUserRequest.Username, cryptedPassword)
+	err = h.usersRepo.RegisterUser(ctx, registerUserRequest.Username, h.encryptPassword(registerUserRequest.Password), registerUserRequest.PhoneNumber)
 	if err != nil {
 		log.WithError(err).Errorln("error trying to register user")
-		statusCode = 500
-		return
-	}
-
-	registerUserResponse := &domain.RegisterUserResponse{
-		Username: registerUserRequest.Username,
-	}
-
-	bodyBytes, err = json.Marshal(registerUserResponse)
-	if err != nil {
-		log.WithError(err).Errorln("error marshalling register response body")
 		statusCode = 500
 		return
 	}
@@ -322,11 +373,21 @@ func (h *APIHandler) RegisterUser(resp http.ResponseWriter, req *http.Request) {
 
 func (h *APIHandler) LoginUser(resp http.ResponseWriter, req *http.Request) {
 	var statusCode int
-	var bodyBytes []byte
+	var token string
 
 	defer func() {
+		loginUserResponse := &domain.LoginUserResponse{
+			Token: token,
+		}
+
+		bodyBytes, err := json.Marshal(loginUserResponse)
+		if err != nil {
+			log.WithError(err).Errorln("error marshalling login response body")
+			statusCode = 500
+		}
+
 		resp.WriteHeader(statusCode)
-		_, err := resp.Write(bodyBytes)
+		_, err = resp.Write(bodyBytes)
 		if err != nil {
 			log.WithError(err).Errorln("failed to write device data response")
 		}
@@ -349,30 +410,14 @@ func (h *APIHandler) LoginUser(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	saltedPassword := loginUserRequest.Password + h.passwordSalt
-	hashedPassword := sha256.Sum256([]byte(saltedPassword))
-	cryptedPassword := hex.EncodeToString(hashedPassword[:])
-
-	userAuth, token, err := h.usersRepo.LoginUser(ctx, loginUserRequest.Username, cryptedPassword)
+	userAuth, token, err := h.usersRepo.LoginUser(ctx, loginUserRequest.Username, h.encryptPassword(loginUserRequest.Password))
 	if err != nil {
 		log.WithError(err).Errorln("error trying to authenticate user")
 		statusCode = 500
 		return
 	}
-
 	if !userAuth {
 		statusCode = 403
-		return
-	}
-
-	loginUserResponse := &domain.LoginUserResponse{
-		Token: token,
-	}
-
-	bodyBytes, err = json.Marshal(loginUserResponse)
-	if err != nil {
-		log.WithError(err).Errorln("error marshalling login response body")
-		statusCode = 500
 		return
 	}
 
@@ -386,18 +431,15 @@ func (h *APIHandler) AddDevices(resp http.ResponseWriter, req *http.Request) {
 		resp.WriteHeader(statusCode)
 	}()
 
-	auth := req.Header.Get(authorizationHeader)
-	token := strings.TrimPrefix(auth, authorizationType+" ")
-
 	ctx := req.Context()
 
+	token := getAuthToken(req)
 	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {
-		log.WithError(err).Errorln("error trying to authenticate token=%v", token)
+		log.WithError(err).Errorf("error trying to authenticate token=%v", token)
 		statusCode = 500
 		return
 	}
-
 	if !userAuth {
 		statusCode = 403
 		return
@@ -409,8 +451,7 @@ func (h *APIHandler) AddDevices(resp http.ResponseWriter, req *http.Request) {
 		statusCode = 500
 		return
 	}
-
-	var addDevicesRequest domain.AddDevicesRequest
+	var addDevicesRequest domain.AddDeleteDevicesRequest
 	err = json.Unmarshal(bytes, &addDevicesRequest)
 	if err != nil {
 		log.WithError(err).Errorln("error unmarshalling add devices request body")
@@ -418,27 +459,14 @@ func (h *APIHandler) AddDevices(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if len(addDevicesRequest.UserDevices) == 0 {
+	if addDevicesRequest.UserDevice == "" {
 		statusCode = 400
 		return
 	}
 
-	// TODO: Add this check when user is trying to add devices to another user.
-	//userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
-	//if err != nil {
-	//	log.WithError(err).Errorf("error getting devices for user=%v", username)
-	//	statusCode = 500
-	//	return
-	//}
-	//
-	//if !allStringsInList(addDevicesRequest.UserDevices, userDevices) {
-	//	statusCode = 403
-	//	return
-	//}
-
-	err = h.usersRepo.AddDevicesForUser(ctx, username, addDevicesRequest.UserDevices)
+	err = h.usersRepo.AddDevicesForUser(ctx, username, []string{addDevicesRequest.UserDevice})
 	if err != nil {
-		log.WithError(err).Errorf("failed to add devices for user=%v devices=%v", username, addDevicesRequest.UserDevices)
+		log.WithError(err).Errorf("failed to add devices for user=%v devices=%v", username, addDevicesRequest.UserDevice)
 		statusCode = 500
 		return
 	}
@@ -448,11 +476,24 @@ func (h *APIHandler) AddDevices(resp http.ResponseWriter, req *http.Request) {
 
 func (h *APIHandler) GetDevices(resp http.ResponseWriter, req *http.Request) {
 	var statusCode int
-	var bodyBytes []byte
+	var apiErrors []error
+	var userDevices []string
 
 	defer func() {
+		getDevicesResponse := &domain.GetDevicesResponse{
+			UserDevices: userDevices,
+			APIErrors:   apiErrors,
+		}
+
+		bodyBytes, err := json.Marshal(getDevicesResponse)
+		if err != nil {
+			log.WithError(err).Errorln("error marshalling login response body")
+			statusCode = 500
+			return
+		}
+
 		resp.WriteHeader(statusCode)
-		_, err := resp.Write(bodyBytes)
+		_, err = resp.Write(bodyBytes)
 		if err != nil {
 			log.WithError(err).Errorln("failed to write device data response")
 		}
@@ -460,35 +501,476 @@ func (h *APIHandler) GetDevices(resp http.ResponseWriter, req *http.Request) {
 
 	ctx := req.Context()
 
-	auth := req.Header.Get(authorizationHeader)
-	token := strings.TrimPrefix(auth, authorizationType+" ")
-
+	token := getAuthToken(req)
 	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
 	if err != nil {
-		log.WithError(err).Errorln("error trying to authenticate token=%v", token)
+		log.WithError(err).Errorf("error trying to authenticate token=%v", token)
 		statusCode = 500
 		return
 	}
-
 	if !userAuth {
 		statusCode = 403
 		return
 	}
 
-	userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
+	userDevices, err = h.usersRepo.GetDevicesForUser(ctx, username)
 	if err != nil {
 		log.WithError(err).Errorf("error getting devices for user=%v", username)
 		statusCode = 500
 		return
 	}
 
-	getDevicesResponse := &domain.GetDevicesResponse{
-		UserDevices: userDevices,
+	statusCode = 200
+}
+
+func (h *APIHandler) DeleteDevices(resp http.ResponseWriter, req *http.Request) {
+	var statusCode int
+	var apiErrors []error
+	var userDevices []string
+
+	defer func() {
+		getDevicesResponse := &domain.GetDevicesResponse{
+			UserDevices: userDevices,
+			APIErrors:   apiErrors,
+		}
+
+		bodyBytes, err := json.Marshal(getDevicesResponse)
+		if err != nil {
+			log.WithError(err).Errorln("error marshalling login response body")
+			statusCode = 500
+			return
+		}
+
+		resp.WriteHeader(statusCode)
+		_, err = resp.Write(bodyBytes)
+		if err != nil {
+			log.WithError(err).Errorln("failed to write device data response")
+		}
+	}()
+
+	ctx := req.Context()
+
+	token := getAuthToken(req)
+	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
+	if err != nil {
+		log.WithError(err).Errorf("error trying to authenticate token=%v", token)
+		statusCode = 500
+		return
+	}
+	if !userAuth {
+		statusCode = 403
+		return
 	}
 
-	bodyBytes, err = json.Marshal(getDevicesResponse)
+	bytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		log.WithError(err).Errorln("error marshalling login response body")
+		log.WithError(err).Errorln("error reading add devices request body")
+		statusCode = 500
+		return
+	}
+	var deleteDeviceRequest domain.AddDeleteDevicesRequest
+	err = json.Unmarshal(bytes, &deleteDeviceRequest)
+	if err != nil {
+		log.WithError(err).Errorln("error unmarshalling add devices request body")
+		statusCode = 500
+		return
+	}
+	if deleteDeviceRequest.UserDevice == "" {
+		statusCode = 400
+		return
+	}
+
+	err = h.usersRepo.DeleteDevicesForUser(ctx, username, []string{deleteDeviceRequest.UserDevice})
+	if err != nil {
+		log.WithError(err).Errorf("failed to add devices for user=%v devices=%v", username, deleteDeviceRequest.UserDevice)
+		statusCode = 500
+		return
+	}
+
+	statusCode = 200
+}
+
+func (h *APIHandler) StartReportGeneration(resp http.ResponseWriter, req *http.Request) {
+	var statusCode int
+	var apiErrors []error
+	var reportName string
+	defer func() {
+		reportGenerationResponse := &domain.DeviceReportGenerationResponse{
+			ReportName: reportName,
+			APIErrors:  apiErrors,
+		}
+
+		bodyBytes, err := json.Marshal(reportGenerationResponse)
+		if err != nil {
+			log.WithError(err).Errorln("error marshalling login response body")
+			statusCode = 500
+			return
+		}
+
+		resp.WriteHeader(statusCode)
+		_, err = resp.Write(bodyBytes)
+		if err != nil {
+			log.WithError(err).Errorln("failed to write device data response")
+		}
+	}()
+
+	ctx := req.Context()
+
+	token := getAuthToken(req)
+	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
+	if err != nil {
+		log.WithError(err).Errorf("error trying to authenticate token=%v", token)
+		statusCode = 500
+		return
+	}
+	if !userAuth {
+		statusCode = 403
+		return
+	}
+
+	bytes, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.WithError(err).Errorln("error reading login request body")
+		statusCode = 500
+		return
+	}
+
+	var reportGenRequest domain.DeviceReportGenerationRequest
+	err = json.Unmarshal(bytes, &reportGenRequest)
+	if err != nil {
+		log.WithError(err).Errorln("error unmarshalling login request body")
+		statusCode = 500
+		return
+	}
+
+	reportName = fmt.Sprintf("%v_%v_%v", username, reportGenRequest.DID, uuid.New().String())
+	err = h.MessagingRepo.SendReportGenerationRequest(ctx, reportName)
+	if err != nil {
+		statusCode = 500
+		return
+	}
+
+	statusCode = 200
+}
+
+func (h *APIHandler) GetAlerts(resp http.ResponseWriter, req *http.Request) {
+	var statusCode int
+	var alerts []*domain.Alert
+	var apiErrors []error
+
+	ctx := req.Context()
+
+	defer func() {
+		// Form and write response.
+		datasetResp := &domain.DeviceAlertsResponse{
+			Alerts:    alerts,
+			APIErrors: apiErrors,
+		}
+
+		bodyBytes, err := json.Marshal(datasetResp)
+		if err != nil {
+			log.WithError(err).Errorln("failed to marshall device alerts response")
+			statusCode = 500
+		}
+
+		resp.WriteHeader(statusCode)
+		_, err = resp.Write(bodyBytes)
+		if err != nil {
+			log.WithError(err).Errorln("failed to write device alerts response")
+		}
+	}()
+
+	// Auth received token.
+	token := getAuthToken(req)
+	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
+	if err != nil {
+		log.WithError(err).Errorf("error trying to authenticate token=%v", token)
+		statusCode = 500
+		return
+	}
+	if !userAuth {
+		apiErrors = append(apiErrors, fmt.Errorf("invalid token=%v", token))
+		statusCode = 403
+		return
+	}
+
+	// Validate received params.
+	did, err := validateDIDParam(req)
+	if err != nil {
+		statusCode = 400
+		apiErrors = append(apiErrors, err)
+		return
+	}
+
+	// Get devices that the user can access.
+	userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
+	if err != nil {
+		log.WithError(err).Errorf("error getting devices for user=%v", username)
+		statusCode = 500
+		return
+	}
+	if !stringInList(did, userDevices) {
+		apiErrors = append(apiErrors, fmt.Errorf("permission denied"))
+		statusCode = 403
+		return
+	}
+
+	// Get alerts for the specific device.
+	alerts, err = h.devicesRepo.GetAlerts(ctx, did)
+	if err != nil {
+		log.WithError(err).Errorln("error getting device alerts response")
+		statusCode = 500
+		return
+	}
+
+	statusCode = 200
+}
+
+func (h *APIHandler) AddSubscription(resp http.ResponseWriter, req *http.Request) {
+	var statusCode int
+	var apiErrors []error
+
+	ctx := req.Context()
+
+	defer func() {
+		// Form and write response.
+		datasetResp := &domain.AddDeleteSubscriptionResponse{
+			APIErrors: apiErrors,
+		}
+
+		bodyBytes, err := json.Marshal(datasetResp)
+		if err != nil {
+			log.WithError(err).Errorln("failed to marshall device alerts response")
+			statusCode = 500
+		}
+
+		resp.WriteHeader(statusCode)
+		_, err = resp.Write(bodyBytes)
+		if err != nil {
+			log.WithError(err).Errorln("failed to write device alerts response")
+		}
+	}()
+
+	// Auth received token.
+	token := getAuthToken(req)
+	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
+	if err != nil {
+		log.WithError(err).Errorf("error trying to authenticate token=%v", token)
+		statusCode = 500
+		return
+	}
+	if !userAuth {
+		apiErrors = append(apiErrors, fmt.Errorf("invalid token=%v", token))
+		statusCode = 403
+		return
+	}
+
+	bodyBytes, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.WithError(err).Errorln("error reading register device info request body")
+		statusCode = 500
+		return
+	}
+	var addSubscriptionRequest domain.AddDeleteSubscriptionRequest
+	err = json.Unmarshal(bodyBytes, &addSubscriptionRequest)
+	if err != nil {
+		log.WithError(err).Errorln("error unmarshalling register device info request body")
+		statusCode = 500
+		return
+	}
+
+	// Get devices that the user can access.
+	userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
+	if err != nil {
+		log.WithError(err).Errorf("error getting devices for user=%v", username)
+		statusCode = 500
+		return
+	}
+	if !stringInList(addSubscriptionRequest.DID, userDevices) {
+		apiErrors = append(apiErrors, fmt.Errorf("permission denied"))
+		statusCode = 403
+		return
+	}
+
+	phone, err := h.usersRepo.GetUserPhone(ctx, username)
+	if err != nil {
+		log.WithError(err).Errorf("error getting devices for user=%v", username)
+		statusCode = 500
+		return
+	}
+
+	// Get alerts for the specific device.
+	err = h.devicesRepo.AddSubscription(ctx, addSubscriptionRequest.DID, phone)
+	if err != nil {
+		log.WithError(err).Errorln("error getting device alerts response")
+		statusCode = 500
+		return
+	}
+
+	statusCode = 200
+}
+
+func (h *APIHandler) DeleteSubscription(resp http.ResponseWriter, req *http.Request) {
+	var statusCode int
+	var apiErrors []error
+
+	ctx := req.Context()
+
+	defer func() {
+		// Form and write response.
+		datasetResp := &domain.AddDeleteSubscriptionResponse{
+			APIErrors: apiErrors,
+		}
+
+		bodyBytes, err := json.Marshal(datasetResp)
+		if err != nil {
+			log.WithError(err).Errorln("failed to marshall device alerts response")
+			statusCode = 500
+		}
+
+		resp.WriteHeader(statusCode)
+		_, err = resp.Write(bodyBytes)
+		if err != nil {
+			log.WithError(err).Errorln("failed to write device alerts response")
+		}
+	}()
+
+	// Auth received token.
+	token := getAuthToken(req)
+	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
+	if err != nil {
+		log.WithError(err).Errorf("error trying to authenticate token=%v", token)
+		statusCode = 500
+		return
+	}
+	if !userAuth {
+		apiErrors = append(apiErrors, fmt.Errorf("invalid token=%v", token))
+		statusCode = 403
+		return
+	}
+
+	bodyBytes, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.WithError(err).Errorln("error reading register device info request body")
+		statusCode = 500
+		return
+	}
+	var addSubscriptionRequest domain.AddDeleteSubscriptionRequest
+	err = json.Unmarshal(bodyBytes, &addSubscriptionRequest)
+	if err != nil {
+		log.WithError(err).Errorln("error unmarshalling register device info request body")
+		statusCode = 500
+		return
+	}
+
+	// Get devices that the user can access.
+	userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
+	if err != nil {
+		log.WithError(err).Errorf("error getting devices for user=%v", username)
+		statusCode = 500
+		return
+	}
+	if !stringInList(addSubscriptionRequest.DID, userDevices) {
+		apiErrors = append(apiErrors, fmt.Errorf("permission denied"))
+		statusCode = 403
+		return
+	}
+
+	phone, err := h.usersRepo.GetUserPhone(ctx, username)
+	if err != nil {
+		log.WithError(err).Errorf("error getting devices for user=%v", username)
+		statusCode = 500
+		return
+	}
+
+	// Get alerts for the specific device.
+	err = h.devicesRepo.DeleteSubscription(ctx, addSubscriptionRequest.DID, phone)
+	if err != nil {
+		log.WithError(err).Errorln("error getting device alerts response")
+		statusCode = 500
+		return
+	}
+
+	statusCode = 200
+}
+
+func (h *APIHandler) encryptPassword(password string) string {
+	saltedPassword := password + h.passwordSalt
+	hashedPassword := sha256.Sum256([]byte(saltedPassword))
+	cryptedPassword := hex.EncodeToString(hashedPassword[:])
+	return cryptedPassword
+}
+
+func (h *APIHandler) UpdateDeviceInfo(resp http.ResponseWriter, req *http.Request) {
+	var statusCode int
+	var apiErrors []error
+
+	ctx := req.Context()
+
+	defer func() {
+		// Form and write response.
+		datasetResp := &domain.AddDeleteSubscriptionResponse{
+			APIErrors: apiErrors,
+		}
+
+		bodyBytes, err := json.Marshal(datasetResp)
+		if err != nil {
+			log.WithError(err).Errorln("failed to marshall device alerts response")
+			statusCode = 500
+		}
+
+		resp.WriteHeader(statusCode)
+		_, err = resp.Write(bodyBytes)
+		if err != nil {
+			log.WithError(err).Errorln("failed to write device alerts response")
+		}
+	}()
+
+	// Auth received token.
+	token := getAuthToken(req)
+	username, userAuth, err := h.usersRepo.AuthToken(ctx, token)
+	if err != nil {
+		log.WithError(err).Errorf("error trying to authenticate token=%v", token)
+		statusCode = 500
+		return
+	}
+	if !userAuth {
+		apiErrors = append(apiErrors, fmt.Errorf("invalid token=%v", token))
+		statusCode = 403
+		return
+	}
+
+	bodyBytes, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.WithError(err).Errorln("error reading register device info request body")
+		statusCode = 500
+		return
+	}
+	var addSubscriptionRequest domain.UpdateDeviceInfoRequest
+	err = json.Unmarshal(bodyBytes, &addSubscriptionRequest)
+	if err != nil {
+		log.WithError(err).Errorln("error unmarshalling register device info request body")
+		statusCode = 500
+		return
+	}
+
+	// Get devices that the user can access.
+	userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
+	if err != nil {
+		log.WithError(err).Errorf("error getting devices for user=%v", username)
+		statusCode = 500
+		return
+	}
+	if !stringInList(addSubscriptionRequest.DID, userDevices) {
+		apiErrors = append(apiErrors, fmt.Errorf("permission denied"))
+		statusCode = 403
+		return
+	}
+
+	// Get alerts for the specific device.
+	err = h.devicesRepo.UpdateDeviceInfo(ctx, addSubscriptionRequest.DID, addSubscriptionRequest.PatientName)
+	if err != nil {
+		log.WithError(err).Errorln("error getting device alerts response")
 		statusCode = 500
 		return
 	}
@@ -510,12 +992,43 @@ func stringInList(itemToFind string, items []string) bool {
 	return false
 }
 
-func allStringsInList(itemsToFind []string, items []string) bool {
-	for _, itemToFind := range itemsToFind {
-		if !stringInList(itemToFind, items) {
-			return false
-		}
+func validateDIDParam(req *http.Request) (string, error) {
+	dids := req.URL.Query()[didQueryParam]
+
+	if len(dids) != 1 {
+		return "", fmt.Errorf("got multiple or no devices; did=%v", dids)
 	}
 
-	return true
+	did := dids[0]
+	if did == "" {
+		return "", fmt.Errorf("device id can not be an empty string")
+	}
+
+	return did, nil
+}
+
+func validateSinceParam(req *http.Request) (time.Time, error) {
+	sinces := req.URL.Query()[sinceQueryParam]
+
+	if len(sinces) != 1 {
+		return time.Time{}, fmt.Errorf("got multiple or no since params; since=%v", sinces)
+	}
+
+	since := sinces[0]
+	if since == "" {
+		return time.Time{}, fmt.Errorf("since parameter can not be an empty string")
+	}
+
+	sinceTimestamp, err := strconv.ParseInt(since, 10, 64)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error trying to parse since param; should be a unix timestamp; since=%v", since)
+	}
+
+	return time.Unix(sinceTimestamp, 0), nil
+}
+
+func getAuthToken(req *http.Request) string {
+	auth := req.Header.Get(authorizationHeader)
+	token := strings.TrimPrefix(auth, authorizationType+" ")
+	return token
 }

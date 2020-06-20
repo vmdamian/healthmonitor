@@ -15,9 +15,11 @@ const (
 	tokensTable = "tokens"
 
 	userPasswordSelectQuery = "SELECT password FROM " + usersTable + " WHERE id = ?"
+	userPhoneSelectQuery    = "SELECT phone FROM " + usersTable + " WHERE id = ?"
 	userDevicesSelectQuery  = "SELECT user_devices FROM " + usersTable + " WHERE id = ?"
-	userPasswordInsertQuery = "INSERT INTO " + usersTable + " (id, password, user_devices) VALUES (?, ?, ?)"
+	userPasswordInsertQuery = "INSERT INTO " + usersTable + " (id, password, phone, user_devices) VALUES (?, ?, ?, ?)"
 	userDevicesInsertQuery  = "UPDATE " + usersTable + " SET user_devices = user_devices + ? WHERE id = ?"
+	userDevicesDeleteQuery  = "UPDATE " + usersTable + " SET user_devices = user_devices - ? WHERE id = ?"
 
 	userByTokenSelectQuery = "SELECT id FROM " + tokensTable + " WHERE user_token = ? ALLOW FILTERING"
 
@@ -52,9 +54,16 @@ func (ur *UsersRepo) Start() error {
 	return nil
 }
 
-func (ur *UsersRepo) RegisterUser(ctx context.Context, username string, cryptedPassword string) error {
-	err := ur.Session.Query(userPasswordInsertQuery, username, cryptedPassword, []string{}).WithContext(ctx).Exec()
+func (ur *UsersRepo) RegisterUser(ctx context.Context, username string, cryptedPassword string, phone string) error {
+	err := ur.Session.Query(userPasswordInsertQuery, username, cryptedPassword, phone, []string{}).WithContext(ctx).Exec()
 	return err
+}
+
+func (ur *UsersRepo) GetUserPhone(ctx context.Context, username string) (string, error) {
+	var receivedPhone string
+
+	err := ur.Session.Query(userPhoneSelectQuery, username).Consistency(gocql.One).WithContext(ctx).Scan(&receivedPhone)
+	return receivedPhone, err
 }
 
 func (ur *UsersRepo) LoginUser(ctx context.Context, username string, cryptedPassword string) (bool, string, error) {
@@ -106,6 +115,11 @@ func (ur *UsersRepo) AuthToken(ctx context.Context, token string) (string, bool,
 
 func (ur UsersRepo) AddDevicesForUser(ctx context.Context, username string, dids []string) error {
 	err := ur.Session.Query(userDevicesInsertQuery, dids, username).WithContext(ctx).Exec()
+	return err
+}
+
+func (ur UsersRepo) DeleteDevicesForUser(ctx context.Context, username string, dids []string) error {
+	err := ur.Session.Query(userDevicesDeleteQuery, dids, username).WithContext(ctx).Exec()
 	return err
 }
 

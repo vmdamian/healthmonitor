@@ -1,28 +1,61 @@
 package domain
 
+import "time"
+
 type DeviceInfoES struct {
-	DID               string `json:"did"`
-	LastSeenTimestamp string `json:"last_seen_timestamp"`
+	DID                     string   `json:"did"`
+	LastSeenTimestamp       string   `json:"last_seen_timestamp"`
+	LastValidationTimestamp string   `json:"last_validation_timestamp"`
+	PatientName             string   `json:"patient_name"`
+	SubscribedPhones        []string `json:"subscribed_phones"`
 }
 
 type DeviceInfo struct {
-	DID               string `json:"did"`
-	LastSeenTimestamp int64  `json:"last_seen_timestamp"`
+	DID                     string    `json:"did"`
+	LastSeenTimestamp       time.Time `json:"last_seen_timestamp"`
+	LastValidationTimestamp time.Time `json:"last_validation_timestamp"`
+	PatientName             string    `json:"patient_name"`
+	SubscribedPhones        []string  `json:"subscribed_phones"`
+}
+
+type DeviceInfoResponse struct {
+	Info      *DeviceInfo `json:"device_info"`
+	APIErrors []error     `json:"errors"`
 }
 
 type DeviceDataES struct {
 	DID         string  `json:"did"`
-	Temperature float32 `json:"temperature"`
-	Heartrate   int64   `json:"heart_rate"`
+	Temperature float64 `json:"temperature"`
+	Heartrate   float64 `json:"heart_rate"`
+	ECG         float64 `json:"heart_ecg"`
+	SPO2        float64 `json:"spo2"`
 	Timestamp   string  `json:"timestamp"`
 }
+
 type DeviceData struct {
-	Temperature float32 `json:"temperature"`
-	Heartrate   int64   `json:"heart_rate"`
-	Timestamp   int64   `json:"timestamp"`
+	DID         string    `json:"did"`
+	Temperature float64   `json:"temperature"`
+	Heartrate   float64   `json:"heart_rate"`
+	ECG         float64   `json:"heart_ecg"`
+	SPO2        float64   `json:"spo2"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 type DeviceDataset struct {
 	DID  string        `json:"did"`
 	Data []*DeviceData `json:"data"`
+}
+
+type DeviceDataAPI struct {
+	DID         string  `json:"did"`
+	Temperature float64 `json:"temperature"`
+	Heartrate   float64 `json:"heart_rate"`
+	ECG         float64 `json:"heart_ecg"`
+	SPO2        float64 `json:"spo2"`
+	Timestamp   string  `json:"timestamp"`
+}
+
+type DeviceDatasetAPI struct {
+	DID  string           `json:"did"`
+	Data []*DeviceDataAPI `json:"data"`
 }

@@ -12,12 +12,16 @@ import (
 )
 
 const (
-	dataIndex = "device-data"
-	infoIndex = "device-info"
+	dataIndex   = "device-data"
+	infoIndex   = "device-info"
+	alertsIndex = "device-alerts"
 
 	didField               = "did"
 	timestampField         = "timestamp"
 	lastSeenTimestampField = "last_seen_timestamp"
+	createdTimestampField  = "created_timestamp"
+	subscribedPhonesField  = "subscribed_phones"
+	patientNameField       = "patient_name"
 )
 
 var (
@@ -50,7 +54,7 @@ func (dr *DevicesRepo) GetDeviceInfo(ctx context.Context, did string) (*domain.D
 	termQuery := elastic.NewTermQuery(didField, did)
 	query := elastic.NewBoolQuery().Filter(termQuery)
 
-	res, err := dr.client.Search(infoIndex).Query(query).Do(ctx)
+	res, err := dr.client.Search(infoIndex).Routing(did).Query(query).Do(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -71,35 +75,77 @@ func (dr *DevicesRepo) GetDeviceInfo(ctx context.Context, did string) (*domain.D
 
 	infoLastSeenTimestamp, err := time.Parse(time.RFC3339, infoES.LastSeenTimestamp)
 	if err != nil {
-		log.WithError(err).Errorln("failed to parse device info timestamp=%v", infoES.LastSeenTimestamp)
+		log.WithError(err).Errorf("failed to parse device info timestamp=%v", infoES.LastSeenTimestamp)
+		return nil, err
+	}
+
+	infoLastValidationTimestamp, err := time.Parse(time.RFC3339, infoES.LastValidationTimestamp)
+	if err != nil {
+		log.WithError(err).Errorf("failed to parse device info timestamp=%v", infoES.LastSeenTimestamp)
 		return nil, err
 	}
 
 	return &domain.DeviceInfo{
-		DID:               did,
-		LastSeenTimestamp: infoLastSeenTimestamp.Unix(),
+		DID:                     did,
+		LastSeenTimestamp:       infoLastSeenTimestamp,
+		LastValidationTimestamp: infoLastValidationTimestamp,
+		PatientName:             infoES.PatientName,
+		SubscribedPhones:        infoES.SubscribedPhones,
 	}, nil
 }
 
-func (dr *DevicesRepo) RegisterDeviceInfo(ctx context.Context, deviceInfo domain.DeviceInfo) error {
+func (dr *DevicesRepo) RegisterDeviceInfo(ctx context.Context, did string) (*domain.DeviceInfo, error) {
 
-	exists, err := dr.checkExistingDevice(ctx, deviceInfo.DID)
+	exists, err := dr.checkExistingDevice(ctx, did)
+	if err != nil {
+		return nil, err
+	}
+
+	if exists {
+		log.Warningf("got register device info request for did=%v, but device info already exists", did)
+		return nil, nil
+	}
+
+	timeNow := time.Now()
+	timeZero := time.Time{}
+
+	// Register new device. Device info document ids are the same as the device id.
+	infoES := domain.DeviceInfoES{
+		DID:                     did,
+		LastSeenTimestamp:       timeNow.Format(time.RFC3339),
+		LastValidationTimestamp: timeZero.Format(time.RFC3339),
+		PatientName:             "",
+		SubscribedPhones:        []string{},
+	}
+
+	_, err = dr.client.Index().Index(infoIndex).Routing(did).Id(did).BodyJson(infoES).Do(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	info := &domain.DeviceInfo{
+		DID:                     infoES.DID,
+		LastSeenTimestamp:       timeNow,
+		LastValidationTimestamp: timeZero,
+		PatientName:             "",
+		SubscribedPhones:        []string{},
+	}
+
+	return info, nil
+}
+
+func (dr *DevicesRepo) UpdateDeviceInfo(ctx context.Context, did string, patientName string) error {
+
+	_, err := dr.GetDeviceInfo(ctx, did)
 	if err != nil {
 		return err
 	}
 
-	if exists {
-		log.Warningf("got register device info request for did=%v, but device info already exists", deviceInfo.DID)
-		return nil
+	updatedData := map[string]interface{}{
+		patientNameField: patientName,
 	}
 
-	// Register new device. Device info document ids are the same as the device id.
-	infoES := domain.DeviceInfoES{
-		DID:               deviceInfo.DID,
-		LastSeenTimestamp: time.Unix(deviceInfo.LastSeenTimestamp, 0).Format(time.RFC3339),
-	}
-
-	_, err = dr.client.Index().Index(infoIndex).Id(deviceInfo.DID).BodyJson(infoES).Do(ctx)
+	_, err = dr.client.Update().Index(infoIndex).Routing(did).Id(did).Doc(updatedData).Do(ctx)
 	if err != nil {
 		return err
 	}
@@ -112,7 +158,7 @@ func (dr *DevicesRepo) GetDeviceData(ctx context.Context, did string, since time
 	termQuery := elastic.NewTermQuery(didField, did)
 	query := elastic.NewBoolQuery().Filter(termQuery, rangeQuery)
 
-	res, err := dr.client.Search(dataIndex).Size(1000).Sort(timestampField, true).Query(query).Do(ctx)
+	res, err := dr.client.Search(dataIndex).Routing(did).Size(1000).Sort(timestampField, true).Query(query).Do(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -137,9 +183,12 @@ func (dr *DevicesRepo) GetDeviceData(ctx context.Context, did string, since time
 		}
 
 		data := &domain.DeviceData{
+			DID:         dataES.DID,
 			Temperature: dataES.Temperature,
 			Heartrate:   dataES.Heartrate,
-			Timestamp:   dataTimestamp.Unix(),
+			ECG:         dataES.ECG,
+			SPO2:        dataES.SPO2,
+			Timestamp:   dataTimestamp,
 		}
 
 		dataset.Data = append(dataset.Data, data)
@@ -168,18 +217,20 @@ func (dr *DevicesRepo) RegisterDeviceData(ctx context.Context, deviceData domain
 			DID:         deviceData.DID,
 			Temperature: data.Temperature,
 			Heartrate:   data.Heartrate,
-			Timestamp:   time.Unix(data.Timestamp, 0).Format(time.RFC3339),
+			Timestamp:   data.Timestamp.Format(time.RFC3339),
+			ECG:         data.ECG,
+			SPO2:        data.SPO2,
 		}
 
 		dataDocID := fmt.Sprintf("%v_%v", deviceData.DID, data.Timestamp)
 
-		_, err := dr.client.Index().Index(dataIndex).Id(dataDocID).BodyJson(dataES).Do(ctx)
+		_, err := dr.client.Index().Routing(deviceData.DID).Index(dataIndex).Id(dataDocID).BodyJson(dataES).Do(ctx)
 		if err != nil {
 			return err
 		}
 
-		if data.Timestamp > maxLastSeenTimestamp {
-			maxLastSeenTimestamp = data.Timestamp
+		if data.Timestamp.Unix() > maxLastSeenTimestamp {
+			maxLastSeenTimestamp = data.Timestamp.Unix()
 		}
 	}
 
@@ -189,7 +240,7 @@ func (dr *DevicesRepo) RegisterDeviceData(ctx context.Context, deviceData domain
 			lastSeenTimestampField: time.Unix(maxLastSeenTimestamp, 0).Format(time.RFC3339),
 		}
 
-		_, err := dr.client.Update().Index(infoIndex).Id(deviceData.DID).Doc(updatedData).Do(ctx)
+		_, err := dr.client.Update().Index(infoIndex).Routing(deviceData.DID).Id(deviceData.DID).Doc(updatedData).Do(ctx)
 		if err != nil {
 			return err
 		}
@@ -198,8 +249,113 @@ func (dr *DevicesRepo) RegisterDeviceData(ctx context.Context, deviceData domain
 	return nil
 }
 
+func (dr *DevicesRepo) GetAlerts(ctx context.Context, did string) ([]*domain.Alert, error) {
+	termQuery := elastic.NewTermQuery(didField, did)
+	query := elastic.NewBoolQuery().Filter(termQuery)
+
+	res, err := dr.client.Search(alertsIndex).Size(1000).Routing(did).Sort(createdTimestampField, false).Query(query).Do(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var alerts []*domain.Alert
+	for _, hit := range res.Hits.Hits {
+		var alertES domain.AlertES
+
+		err := json.Unmarshal(hit.Source, &alertES)
+		if err != nil {
+			log.WithError(err).Errorln("failed to unmarshall device alert")
+			continue
+		}
+
+		createdTimestap, err := time.Parse(time.RFC3339, alertES.CreatedTimestamp)
+		if err != nil {
+			log.WithError(err).Errorln("failed to parse alert created timestamp")
+			continue
+		}
+
+		lastActiveTimestamp, err := time.Parse(time.RFC3339, alertES.LastActiveTimestamp)
+		if err != nil {
+			log.WithError(err).Errorln("failed to parse alert last active timestamp")
+			continue
+		}
+
+		resolvedTimestamp, err := time.Parse(time.RFC3339, alertES.ResolvedTimestamp)
+		if err != nil {
+			log.WithError(err).Errorln("failed to parse alert resolved timestamp")
+			continue
+		}
+
+		alert := &domain.Alert{
+			DID:                 alertES.DID,
+			AlertType:           alertES.AlertType,
+			Status:              alertES.Status,
+			CreatedTimestamp:    createdTimestap,
+			LastActiveTimestamp: lastActiveTimestamp,
+			ResolvedTimestamp:   resolvedTimestamp,
+		}
+
+		alerts = append(alerts, alert)
+	}
+
+	return alerts, err
+}
+
+func (dr *DevicesRepo) AddSubscription(ctx context.Context, did string, phone string) error {
+	deviceInfo, err := dr.GetDeviceInfo(ctx, did)
+	if err != nil {
+		return err
+	}
+
+	if stringInList(phone, deviceInfo.SubscribedPhones) {
+		return nil
+	}
+
+	newSubscribedPhones := append(deviceInfo.SubscribedPhones, phone)
+
+	updatedData := map[string]interface{}{
+		subscribedPhonesField: newSubscribedPhones,
+	}
+
+	_, err = dr.client.Update().Index(infoIndex).Routing(did).Id(did).Doc(updatedData).Do(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (dr *DevicesRepo) DeleteSubscription(ctx context.Context, did string, phone string) error {
+	deviceInfo, err := dr.GetDeviceInfo(ctx, did)
+	if err != nil {
+		return err
+	}
+
+	if !stringInList(phone, deviceInfo.SubscribedPhones) {
+		return nil
+	}
+
+	newSubscribedPhones := make([]string, 0, len(deviceInfo.SubscribedPhones)-1)
+	for _, existingPhone := range deviceInfo.SubscribedPhones {
+		if existingPhone != phone {
+			newSubscribedPhones = append(newSubscribedPhones, existingPhone)
+		}
+	}
+
+	updatedData := map[string]interface{}{
+		subscribedPhonesField: newSubscribedPhones,
+	}
+
+	_, err = dr.client.Update().Index(infoIndex).Routing(did).Id(did).Doc(updatedData).Do(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (dr *DevicesRepo) checkExistingDevice(ctx context.Context, did string) (bool, error) {
-	_, err := dr.client.Get().Index(infoIndex).Id(did).Do(ctx)
+	_, err := dr.client.Get().Routing(did).Index(infoIndex).Id(did).Do(ctx)
 	if err != nil {
 		if elastic.IsNotFound(err) {
 			return false, nil
