@@ -27,6 +27,8 @@ const (
 	lastActiveTimestampField = "last_active_timestamp"
 	resolvedTimestampField   = "resolved_timestamp"
 	statusField              = "status"
+
+	lastValidationTimestampField = "last_validation_timestamp"
 )
 
 var (
@@ -246,6 +248,25 @@ func (dr *DevicesRepo) GetDeviceInfo(ctx context.Context, did string) (*domain.D
 		PatientName:             infoES.PatientName,
 		SubscribedPhones:        infoES.SubscribedPhones,
 	}, nil
+}
+
+func (dr *DevicesRepo) UpdateDeviceInfo(ctx context.Context, did string, lastValidated time.Time) error {
+
+	_, err := dr.GetDeviceInfo(ctx, did)
+	if err != nil {
+		return err
+	}
+
+	updatedData := map[string]interface{}{
+		lastValidationTimestampField: lastValidated.Format(time.RFC3339),
+	}
+
+	_, err = dr.client.Update().Index(infoIndex).Routing(did).Id(did).Doc(updatedData).Do(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (dr *DevicesRepo) GetDeviceData(ctx context.Context, did string, since time.Time) (*domain.DeviceDataset, error) {

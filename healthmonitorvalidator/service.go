@@ -27,7 +27,7 @@ func NewHealthMonitorValidatorService(config *HealthMonitorValidatorServiceConfi
 	reportGenerator := usecases.NewReportGenerator(devicesRepo)
 	cleanupGenerator := usecases.NewCleanupGenerator(devicesRepo)
 
-	messagingRepo := gateways.NewMessagingRepo(config.KafkaBrokers,
+	messagingRepo := gateways.NewMessagingRepo(config.KafkaBrokers, config.KafkaWorkerCount,
 		alertGenerator.GenerateUpdateAndSendAlertsForDevice,
 		cleanupGenerator.GenerateCleanup,
 		reportGenerator.GenerateReport)

@@ -46,7 +46,7 @@ func NewHealthMonitorAPIService(config *HealthMonitorAPIServiceConfig) *HealthMo
 	messagingRepo := gateways.NewMessagingRepo(config.KafkaBrokers)
 	cronJobRunner := jobs.NewCronJobRunner(messagingRepo, config.CronJobInterval, config.MaxDatapointAge)
 
-	apiHandler := gateways.NewAPIHandler(usersRepo, devicesRepo, messagingRepo, minimalistValidator, config.PasswordSalt)
+	apiHandler := gateways.NewAPIHandler(usersRepo, devicesRepo, messagingRepo, minimalistValidator, config.PasswordSalt, config.ValidationInterval)
 
 	service := &HealthMonitorAPIService{
 		UsersRepo:     usersRepo,

@@ -10,7 +10,7 @@ func main() {
 
 	es := flag.String("elasticsearch", "http://127.0.0.1:9200", "elasticsearch host")
 	cass := flag.String("cassandra", "127.0.0.1", "cassandra host")
-	kafka := flag.String("kafka","127.0.0.1:9092", "kafka host")
+	kafka := flag.String("kafka", "127.0.0.1:9092", "kafka host")
 	flag.Parse()
 
 	boundsConfig := HealthMonitorBoundsConfig{
@@ -38,6 +38,7 @@ func main() {
 	config := &HealthMonitorAPIServiceConfig{
 		Port:                            "9000",
 		PasswordSalt:                    "720036c8101f751b82cdba6e74fbd217419a2d478dd49f6d7ba6697ed3810ece",
+		ValidationInterval:              5 * time.Minute,
 		HealthMonitorBoundsConfig:       boundsConfig,
 		HealthMonitorCleanupConfig:      cleanupConfig,
 		HealthMonitorDependenciesConfig: dependenciesConfig,

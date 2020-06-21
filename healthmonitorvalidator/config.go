@@ -6,6 +6,8 @@ type HealthMonitorValidatorServiceConfig struct {
 	KafkaBrokers      []string
 	ElasticsearchHost string
 
+	KafkaWorkerCount int
+
 	AlertSenderAccountSID  string
 	AlertSenderToken       string
 	AlertSenderPhoneNumber string

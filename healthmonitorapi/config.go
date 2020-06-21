@@ -3,8 +3,9 @@ package main
 import "time"
 
 type HealthMonitorAPIServiceConfig struct {
-	Port         string
-	PasswordSalt string
+	Port               string
+	PasswordSalt       string
+	ValidationInterval time.Duration
 	HealthMonitorDependenciesConfig
 	HealthMonitorBoundsConfig
 	HealthMonitorCleanupConfig

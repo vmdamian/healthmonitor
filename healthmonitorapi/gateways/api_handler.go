@@ -25,20 +25,22 @@ const (
 )
 
 type APIHandler struct {
-	usersRepo     *UsersRepo
-	devicesRepo   *DevicesRepo
-	MessagingRepo *MessagingRepo
-	validator     *validation.MinimalistValidator
-	passwordSalt  string
+	usersRepo          *UsersRepo
+	devicesRepo        *DevicesRepo
+	MessagingRepo      *MessagingRepo
+	validator          *validation.MinimalistValidator
+	passwordSalt       string
+	validationInterval time.Duration
 }
 
-func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, messagingRepo *MessagingRepo, validator *validation.MinimalistValidator, passwordSalt string) *APIHandler {
+func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, messagingRepo *MessagingRepo, validator *validation.MinimalistValidator, passwordSalt string, validationInterval time.Duration) *APIHandler {
 	return &APIHandler{
-		usersRepo:     usersRepo,
-		devicesRepo:   devicesRepo,
-		MessagingRepo: messagingRepo,
-		validator:     validator,
-		passwordSalt:  passwordSalt,
+		usersRepo:          usersRepo,
+		devicesRepo:        devicesRepo,
+		MessagingRepo:      messagingRepo,
+		validator:          validator,
+		passwordSalt:       passwordSalt,
+		validationInterval: validationInterval,
 	}
 }
 
@@ -310,9 +312,18 @@ func (h *APIHandler) RegisterDeviceData(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	err = h.MessagingRepo.SendValidationRequest(ctx, deviceDatasetRequest.DID)
+	deviceinfo, err := h.devicesRepo.GetDeviceInfo(ctx, deviceDataset.DID)
 	if err != nil {
 		log.WithError(err).Errorf("error sending a validation request for did=%v", deviceDatasetRequest.DID)
+	}
+
+	if time.Since(deviceinfo.LastValidationTimestamp) > h.validationInterval {
+		err = h.MessagingRepo.SendValidationRequest(ctx, deviceDatasetRequest.DID)
+		if err != nil {
+			log.WithError(err).Errorf("error sending a validation request for did=%v", deviceDatasetRequest.DID)
+		}
+	} else {
+		log.Info("skipping sending validation request for device")
 	}
 
 	alertCodes = h.validator.CheckDataset(&deviceDataset)

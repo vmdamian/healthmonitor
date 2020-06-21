@@ -24,15 +24,27 @@ type MessagingRepo struct {
 	messageCleanupHandler    MessageHandler
 	messageReportHandler     MessageHandler
 	wg                       sync.WaitGroup
+
+	workerCount int
+	workerwg    sync.WaitGroup
+	msgChan     chan kafka.Message
+
+	stopChan chan struct{}
 }
 
-func NewMessagingRepo(brokers []string, messageValidationHandler MessageHandler, messageCleanupHandler MessageHandler, messageReportHandler MessageHandler) *MessagingRepo {
+func NewMessagingRepo(brokers []string, workerCount int, messageValidationHandler MessageHandler, messageCleanupHandler MessageHandler, messageReportHandler MessageHandler) *MessagingRepo {
 	return &MessagingRepo{
 		brokers:                  brokers,
 		messageValidationHandler: messageValidationHandler,
 		messageCleanupHandler:    messageCleanupHandler,
 		messageReportHandler:     messageReportHandler,
 		wg:                       sync.WaitGroup{},
+
+		workerCount: workerCount,
+		workerwg:    sync.WaitGroup{},
+		msgChan:     make(chan kafka.Message, workerCount),
+
+		stopChan: make(chan struct{}),
 	}
 }
 
@@ -50,59 +62,85 @@ func (mr *MessagingRepo) Start(ctx context.Context) {
 		Dialer:  dialer,
 	}
 
+	for i := 0; i < mr.workerCount; i++ {
+		mr.workerwg.Add(1)
+		go func() {
+			defer mr.workerwg.Done()
+
+			for msg := range mr.msgChan {
+				mr.processMessage(ctx, msg)
+			}
+		}()
+	}
+
 	mr.reader = kafka.NewReader(config)
 
 	mr.wg.Add(1)
-
 	go func() {
-		for {
-			message, err := mr.receiveValidationRequest(ctx)
-			if err != nil {
-				log.WithError(err).Errorln("failed to receive message")
-				continue
-			}
+		defer mr.wg.Done()
 
-			switch {
-			case strings.HasPrefix(message, "validation"):
-				err = mr.messageValidationHandler(ctx, message)
-				if err != nil {
-					log.WithError(err).Errorf("failed to validate message=%v", message)
-				}
-			case strings.HasPrefix(message, "cleanup"):
-				err = mr.messageCleanupHandler(ctx, message)
-				if err != nil {
-					log.WithError(err).Errorf("failed to cleanup for message=%v", message)
-				}
-			case strings.HasPrefix(message, "report-generation"):
-				err = mr.messageReportHandler(ctx, message)
-				if err != nil {
-					log.WithError(err).Errorf("failed to do report generation message=%v", message)
-				}
+		for {
+			select {
+			case <-mr.stopChan:
+				return
 			default:
-				log.Errorf("unknown message=%v", message)
+				err := mr.receiveValidationRequest(ctx)
+				if err != nil {
+					log.WithError(err).Errorln("failed to receive message")
+				}
 			}
 		}
-
-		mr.wg.Done()
 	}()
 
 	mr.wg.Wait()
 }
 
 func (mr *MessagingRepo) Stop() {
+	mr.stopChan <- struct{}{}
+	mr.wg.Wait()
+
+	close(mr.msgChan)
+	mr.workerwg.Wait()
+
 	_ = mr.reader.Close()
 }
 
-func (mr *MessagingRepo) receiveValidationRequest(ctx context.Context) (string, error) {
+func (mr *MessagingRepo) receiveValidationRequest(ctx context.Context) error {
 	msg, err := mr.reader.FetchMessage(ctx)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	err = mr.reader.CommitMessages(ctx, msg)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return string(msg.Value), nil
+	mr.msgChan <- msg
+
+	return nil
+}
+
+func (mr *MessagingRepo) processMessage(ctx context.Context, msg kafka.Message) {
+	message := string(msg.Value)
+
+	switch {
+	case strings.HasPrefix(message, "validation"):
+		err := mr.messageValidationHandler(ctx, message)
+		if err != nil {
+			log.WithError(err).Errorf("failed to validate message=%v", message)
+		}
+	case strings.HasPrefix(message, "cleanup"):
+		err := mr.messageCleanupHandler(ctx, message)
+		if err != nil {
+			log.WithError(err).Errorf("failed to cleanup for message=%v", message)
+		}
+	case strings.HasPrefix(message, "report-generation"):
+		err := mr.messageReportHandler(ctx, message)
+		if err != nil {
+			log.WithError(err).Errorf("failed to do report generation message=%v", message)
+		}
+	default:
+		log.Errorf("unknown message=%v", message)
+	}
 }

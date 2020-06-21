@@ -95,6 +95,11 @@ func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Conte
 		return fmt.Errorf("failed to send notifications to phoneNumbers=%v", failedPhones)
 	}
 
+	err = ag.devicesRepo.UpdateDeviceInfo(ctx, deviceInfo.DID, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to update last validation timestamp for device %v", deviceInfo.DID)
+	}
+
 	return nil
 }
 
