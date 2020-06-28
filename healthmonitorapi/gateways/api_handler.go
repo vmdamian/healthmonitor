@@ -320,15 +320,17 @@ func (h *APIHandler) RegisterDeviceData(resp http.ResponseWriter, req *http.Requ
 	deviceinfo, err := h.devicesRepo.GetDeviceInfo(ctx, deviceDataset.DID)
 	if err != nil {
 		log.WithError(err).Errorf("error sending a validation request for did=%v", deviceDatasetRequest.DID)
+		statusCode = 500
+		return
 	}
 
 	if time.Since(deviceinfo.LastValidationTimestamp) > h.validationInterval {
 		err = h.MessagingRepo.SendValidationRequest(ctx, deviceDatasetRequest.DID)
 		if err != nil {
 			log.WithError(err).Errorf("error sending a validation request for did=%v", deviceDatasetRequest.DID)
+			statusCode = 500
+			return
 		}
-	} else {
-		log.Info("skipping sending validation request for device")
 	}
 
 	alertCodes = h.validator.CheckDataset(&deviceDataset)

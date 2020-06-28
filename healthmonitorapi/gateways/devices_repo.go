@@ -51,8 +51,7 @@ func (dr *DevicesRepo) Start() error {
 }
 
 func (dr *DevicesRepo) GetDeviceInfo(ctx context.Context, did string) (*domain.DeviceInfo, error) {
-	termQuery := elastic.NewTermQuery(didField, did)
-	query := elastic.NewBoolQuery().Filter(termQuery)
+	query := elastic.NewMatchQuery(didField, did)
 
 	res, err := dr.client.Search(infoIndex).Routing(did).Query(query).Do(ctx)
 	if err != nil {
