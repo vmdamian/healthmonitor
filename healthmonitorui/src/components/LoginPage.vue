@@ -347,7 +347,6 @@
           this.pulseAlerts = this.deviceAlerts.filter(function(alert) {
             return alert.alert_type === "HEARTRATE_HIGH" || alert.alert_type === "HEARTRATE_LOW"
           })
-          console.log(this.deviceAlerts)
         }
       }, function(error){
         this.loginOK = false;
@@ -388,9 +387,7 @@
       if (this.operationDevice === '') {
         return
       }
-      this.$http.delete(baseURL + userDevicesPath, {
-        user_device: this.operationDevice,
-      }, {headers: {Authorization: 'Bearer ' + this.token}}).then(function(response) {
+      this.$http.delete(baseURL + userDevicesPath, {params: { did: this.selectedDevice},headers: {Authorization: 'Bearer ' + this.token}}).then(function(response) {
         if (response.statusText === "OK") {
           this.getDevicesForUser()
           alert("OK!")
@@ -428,9 +425,7 @@
       if (this.operationDevice === '') {
         return
       }
-      this.$http.delete(baseURL + userSubscriptionsPath, {
-        did: this.operationDevice,
-      }, {headers: {Authorization: 'Bearer ' + this.token}}).then(function(response) {
+      this.$http.delete(baseURL + userSubscriptionsPath, {params: { did: this.selectedDevice},headers: {Authorization: 'Bearer ' + this.token}}).then(function(response) {
         if (response.statusText === "OK") {
           this.getDevicesForUser()
           alert("OK!")

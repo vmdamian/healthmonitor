@@ -580,27 +580,16 @@ func (h *APIHandler) DeleteDevices(resp http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	bytes, err := ioutil.ReadAll(req.Body)
+	did, err := validateDIDParam(req)
 	if err != nil {
-		log.WithError(err).Errorln("error reading add devices request body")
-		statusCode = 500
-		return
-	}
-	var deleteDeviceRequest domain.AddDeleteDevicesRequest
-	err = json.Unmarshal(bytes, &deleteDeviceRequest)
-	if err != nil {
-		log.WithError(err).Errorln("error unmarshalling add devices request body")
-		statusCode = 500
-		return
-	}
-	if deleteDeviceRequest.UserDevice == "" {
+		apiErrors = append(apiErrors, err)
 		statusCode = 400
 		return
 	}
 
-	err = h.usersRepo.DeleteDevicesForUser(ctx, username, []string{deleteDeviceRequest.UserDevice})
+	err = h.usersRepo.DeleteDevicesForUser(ctx, username, []string{did})
 	if err != nil {
-		log.WithError(err).Errorf("failed to add devices for user=%v devices=%v", username, deleteDeviceRequest.UserDevice)
+		log.WithError(err).Errorf("failed to add devices for user=%v devices=%v", username, did)
 		statusCode = 500
 		return
 	}
@@ -867,17 +856,10 @@ func (h *APIHandler) DeleteSubscription(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	bodyBytes, err := ioutil.ReadAll(req.Body)
+	did, err := validateDIDParam(req)
 	if err != nil {
-		log.WithError(err).Errorln("error reading register device info request body")
-		statusCode = 500
-		return
-	}
-	var addSubscriptionRequest domain.AddDeleteSubscriptionRequest
-	err = json.Unmarshal(bodyBytes, &addSubscriptionRequest)
-	if err != nil {
-		log.WithError(err).Errorln("error unmarshalling register device info request body")
-		statusCode = 500
+		apiErrors = append(apiErrors, err)
+		statusCode = 400
 		return
 	}
 
@@ -888,7 +870,7 @@ func (h *APIHandler) DeleteSubscription(resp http.ResponseWriter, req *http.Requ
 		statusCode = 500
 		return
 	}
-	if !stringInList(addSubscriptionRequest.DID, userDevices) {
+	if !stringInList(did, userDevices) {
 		apiErrors = append(apiErrors, fmt.Errorf("permission denied"))
 		statusCode = 403
 		return
@@ -902,7 +884,7 @@ func (h *APIHandler) DeleteSubscription(resp http.ResponseWriter, req *http.Requ
 	}
 
 	// Get alerts for the specific device.
-	err = h.devicesRepo.DeleteSubscription(ctx, addSubscriptionRequest.DID, phone)
+	err = h.devicesRepo.DeleteSubscription(ctx, did, phone)
 	if err != nil {
 		log.WithError(err).Errorln("error getting device alerts response")
 		statusCode = 500
