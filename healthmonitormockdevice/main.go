@@ -33,8 +33,8 @@ const (
 )
 
 func main() {
-	if len(os.Args) != 5 {
-		log.Errorln("> usage ./healthmonitormockdevice device_count data_interval_seconds username password")
+	if len(os.Args) != 6 {
+		log.Errorln("> usage ./healthmonitormockdevice device_count data_interval_seconds username password dataOK")
 		return
 	}
 
@@ -52,6 +52,7 @@ func main() {
 
 	username := os.Args[3]
 	password := os.Args[4]
+	dataOK := os.Args[5]
 
 	wg := sync.WaitGroup{}
 
@@ -59,7 +60,7 @@ func main() {
 	devices := make([]*Device, 0, count)
 	dids := make([]string, 0, count)
 	for i := 0; i < count; i++ {
-		device := NewDevice(fmt.Sprintf("%v_%v%v", username, didPrefix, i), time.Duration(interval) * time.Second)
+		device := NewDevice(fmt.Sprintf("%v_%v%v", username, didPrefix, i), time.Duration(interval) * time.Second, dataOK)
 		devices = append(devices, device)
 		dids = append(dids, device.GetDID())
 	}

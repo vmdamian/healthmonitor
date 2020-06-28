@@ -53,10 +53,10 @@
           <h2>Device ID</h2>
           <input v-model="operationDevice" placeholder="deviceID">
           <h2>Device actions</h2>
-          <button>Add</button>
-          <button>Delete</button>
-          <button>Subscribe</button>
-          <button>Unsubscribe</button>
+          <button v-on:click="onDeviceAdd">Add</button>
+          <button v-on:click="onDeviceRemove">Delete</button>
+          <button v-on:click="onDeviceSubscribe">Subscribe</button>
+          <button v-on:click="onDeviceUnsubscribe">Unsubscribe</button>
         </div>
       </div>
 
@@ -148,6 +148,7 @@
   const deviceInfoPath = '/healthmonitorapi/entities/devices/info'
   const deviceAlertsPath = '/healthmonitorapi/entities/devices/alerts'
   const userDevicesPath = '/healthmonitorapi/entities/users/devices'
+  const userSubscriptionsPath = '/healthmonitorapi/entities/users/subscriptions'
 
   export default {
   name: 'LoginPage',
@@ -363,6 +364,84 @@
       this.getDeviceInfo()
       this.getDeviceData(minuteAgoTimestamp)
       this.getDeviceAlerts()
+    },
+    onDeviceAdd: function() {
+      if (this.operationDevice === '') {
+        return
+      }
+      this.$http.post(baseURL + userDevicesPath, {
+        user_device: this.operationDevice,
+      }, {headers: {Authorization: 'Bearer ' + this.token}}).then(function(response) {
+        if (response.statusText === "OK") {
+          this.getDevicesForUser()
+          alert("OK!")
+        }
+      }, function(error) {
+        if (error.statusText === "Forbidden") {
+          alert("Operation failed due to incorrect credentials!")
+        } else {
+          alert("Operation failed due to server error!")
+        }
+      });
+    },
+    onDeviceRemove: function() {
+      if (this.operationDevice === '') {
+        return
+      }
+      this.$http.delete(baseURL + userDevicesPath, {
+        user_device: this.operationDevice,
+      }, {headers: {Authorization: 'Bearer ' + this.token}}).then(function(response) {
+        if (response.statusText === "OK") {
+          this.getDevicesForUser()
+          alert("OK!")
+        }
+      }, function(error) {
+        if (error.statusText === "Forbidden") {
+          alert("Operation failed due to incorrect credentials!")
+        } else {
+          alert("Operation failed due to server error!")
+        }
+      });
+    },
+    onDeviceSubscribe: function() {
+      if (this.operationDevice === '') {
+        return
+      }
+      this.$http.post(baseURL + userSubscriptionsPath, {
+        did: this.operationDevice,
+      }, {headers: {Authorization: 'Bearer ' + this.token}}).then(function(response) {
+        if (response.statusText === "OK") {
+          this.getDevicesForUser()
+          alert("OK!")
+        }
+      }, function(error) {
+        if (error.statusText === "Forbidden") {
+          alert("Operation failed due to incorrect credentials!")
+        } else {
+          console.log(error)
+          console.log(error.statusText)
+          alert("Operation failed due to server error!")
+        }
+      });
+    },
+    onDeviceUnsubscribe: function() {
+      if (this.operationDevice === '') {
+        return
+      }
+      this.$http.delete(baseURL + userSubscriptionsPath, {
+        did: this.operationDevice,
+      }, {headers: {Authorization: 'Bearer ' + this.token}}).then(function(response) {
+        if (response.statusText === "OK") {
+          this.getDevicesForUser()
+          alert("OK!")
+        }
+      }, function(error) {
+        if (error.statusText === "Forbidden") {
+          alert("Operation failed due to incorrect credentials!")
+        } else {
+          alert("Operation failed due to server error!")
+        }
+      });
     },
   },
   mounted: function () {},

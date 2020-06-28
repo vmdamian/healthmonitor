@@ -75,7 +75,7 @@ func (s *HealthMonitorAPIService) Start() error {
 
 	s.MessagingRepo.Start()
 
-	allowedHeaders := handlers.AllowedHeaders([]string{"Authorization", "Accept", "Accept-Language", "Content-Type", "Content-Language", "Origin"})
+	allowedHeaders := handlers.AllowedHeaders([]string{"Authorization", "Accept", "Accept-Language", "Content-Type", "Content-Language", "Origin", "Access-Control-Allow-Origin"})
 	err = http.ListenAndServe(":"+s.config.Port, handlers.CORS(allowedHeaders)(s.router))
 	if err != nil {
 		return err

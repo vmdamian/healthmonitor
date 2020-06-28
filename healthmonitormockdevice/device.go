@@ -21,15 +21,17 @@ type Device struct {
 	ticker *time.Ticker
 	stopChan chan struct{}
 	totalTime time.Duration
+	dataOK string
 	count int
 }
 
-func NewDevice(did string, interval time.Duration) *Device {
+func NewDevice(did string, interval time.Duration, dataOK string) *Device {
 	return &Device{
 		did: did,
 		interval: interval,
 		stopChan: make(chan struct{}),
 		totalTime:  0,
+		dataOK: dataOK,
 		count: 0,
 	}
 }
@@ -93,14 +95,27 @@ func (d *Device) generateDeviceData() {
 	for {
 		select {
 		case <- d.ticker.C:
+			var temp, hr, ecg, spo2 float64
+			if d.dataOK == "good" {
+				temp = generateRandomFloat64(35, 37)
+				hr = generateRandomFloat64(60, 100)
+				ecg = generateRandomFloat64(200, 1000)
+				spo2 = generateRandomFloat64(90, 100)
+			} else {
+				temp = generateRandomFloat64(36, 38.5)
+				hr = generateRandomFloat64(90, 120)
+				ecg = generateRandomFloat64(200, 1000)
+				spo2 = generateRandomFloat64(80, 95)
+			}
+
 			deviceDataset := domain.DeviceDataset{
 				DID: d.did,
 				Data: []*domain.DeviceData{
 					{
-						Temperature: generateRandomFloat64(36.5, 50),
-						Heartrate: generateRandomFloat64(70, 90),
-						ECG:  generateRandomFloat64(100, 500),
-						SPO2: generateRandomFloat64(90, 100),
+						Temperature: temp,
+						Heartrate: hr,
+						ECG:  ecg,
+						SPO2: spo2,
 						Timestamp: time.Now(),
 					},
 				},
