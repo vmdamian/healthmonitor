@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	healthPath = "/healthmonitorapi/health"
 	deviceInfoPath = "/healthmonitorapi/entities/devices/info"
 	deviceDataPath = "/healthmonitorapi/entities/devices/data"
 
@@ -85,6 +86,8 @@ func (s *HealthMonitorAPIService) Start() error {
 
 func (s *HealthMonitorAPIService) registerRoutes() {
 	router := mux.NewRouter()
+
+	router.HandleFunc(healthPath, s.APIHandler.GetHealth).Methods("GET")
 
 	router.HandleFunc(deviceInfoPath, s.APIHandler.GetDeviceInfo).Methods("GET")
 	router.HandleFunc(deviceInfoPath, s.APIHandler.RegisterDeviceInfo).Methods("POST")

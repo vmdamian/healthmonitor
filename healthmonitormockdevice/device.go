@@ -20,6 +20,8 @@ type Device struct {
 	interval time.Duration
 	ticker *time.Ticker
 	stopChan chan struct{}
+	totalTime time.Duration
+	count int
 }
 
 func NewDevice(did string, interval time.Duration) *Device {
@@ -27,6 +29,8 @@ func NewDevice(did string, interval time.Duration) *Device {
 		did: did,
 		interval: interval,
 		stopChan: make(chan struct{}),
+		totalTime:  0,
+		count: 0,
 	}
 }
 
@@ -93,7 +97,7 @@ func (d *Device) generateDeviceData() {
 				DID: d.did,
 				Data: []*domain.DeviceData{
 					{
-						Temperature: generateRandomFloat64(36.5, 41),
+						Temperature: generateRandomFloat64(36.5, 50),
 						Heartrate: generateRandomFloat64(70, 90),
 						ECG:  generateRandomFloat64(100, 500),
 						SPO2: generateRandomFloat64(90, 100),
@@ -109,7 +113,10 @@ func (d *Device) generateDeviceData() {
 			}
 			reader := bytes.NewReader(bodyBytes)
 
+			startTime := time.Now()
 			resp, err := http.Post(healthmonitorAPIURL + registerDataPath, contentType, reader)
+			d.totalTime = d.totalTime + time.Since(startTime)
+			d.count = d.count + 1
 			if err != nil {
 				log.WithError(err).Errorf("> device %v error sending request to healthmonitorapi service to register device data", d.did)
 				return
@@ -120,12 +127,18 @@ func (d *Device) generateDeviceData() {
 				return
 			}
 
+
+
 			resp.Body.Close()
 		case <- d.stopChan:
 			d.ticker.Stop()
 			return
 		}
 	}
+}
+
+func (d *Device) GetStats() (time.Duration, int) {
+	return d.totalTime, d.count
 }
 
 func generateRandomFloat64(min float64, max float64) float64 {

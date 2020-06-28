@@ -52,7 +52,7 @@ type RegisterDeviceInfoRequest struct {
 }
 
 type RegisterDeviceInfoResponse struct {
-	DeviceInfo *DeviceInfo `json:"info"`
+	DeviceInfo *DeviceInfo `json:"info,omitempty"`
 	APIErrors  []error     `json:"errors"`
 }
 

@@ -19,8 +19,9 @@ import (
 
 const (
 	stopCommand = "stop"
+	statsCommand = "stats"
 
-	healthmonitorAPIURL = "http://127.0.0.1:9000"
+	healthmonitorAPIURL = "http://18.188.120.48:9000"
 	loginPath = "/healthmonitorapi/auth/login"
 	userDevicesPath = "/healthmonitorapi/entities/users/devices"
 	registerDevicePath = "/healthmonitorapi/entities/devices/info"
@@ -75,7 +76,7 @@ func main() {
 		device.Start(&wg)
 	}
 
-	waitForStopCommand()
+	waitForCommand(devices)
 
 	log.Infoln("> stopping devices")
 	for _, device := range devices {
@@ -85,7 +86,7 @@ func main() {
 	wg.Wait()
 }
 
-func waitForStopCommand() {
+func waitForCommand(devices []*Device) {
 	consoleReader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -100,6 +101,21 @@ func waitForStopCommand() {
 
 		if strings.ToLower(strings.Trim(command, "\n")) == stopCommand {
 			return
+		}
+
+		if strings.ToLower(strings.Trim(command, "\n")) == statsCommand {
+
+			var totalSum time.Duration
+			totalCount := 0
+			for _, device := range devices {
+				sumTime, count := device.GetStats()
+				totalSum = totalSum + sumTime
+				totalCount = totalCount + count
+			}
+
+			fmt.Printf("Stats : average write duration is time=%v, count=%v\n\n", totalCount, totalSum)
+
+			continue
 		}
 
 		log.Errorln("> unrecognised command")

@@ -1,8 +1,8 @@
 PUT /device-info
 {
   "settings": {
-    "number_of_shards": 3,
-    "number_of_replicas": 2
+    "number_of_shards": 2,
+    "number_of_replicas": 1
   },
   "mappings": {
     "properties": {
@@ -13,6 +13,18 @@ PUT /device-info
       "last_seen_timestamp": {
         "type": "date",
         "index": true
+      },
+      "last_validation_timestamp": {
+        "type": "date",
+        "index": false
+      },
+      "patient_name": {
+        "type": "text",
+        "index": false
+      },
+      "subscribed_phones": {
+        "type": "text",
+        "index": false
       }
     }
   }

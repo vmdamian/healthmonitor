@@ -44,6 +44,10 @@ func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, messagingRepo
 	}
 }
 
+func (h *APIHandler) GetHealth(resp http.ResponseWriter, req *http.Request) {
+	resp.WriteHeader(200)
+}
+
 func (h *APIHandler) GetDeviceInfo(resp http.ResponseWriter, req *http.Request) {
 	var statusCode int
 	var info *domain.DeviceInfo
@@ -299,7 +303,7 @@ func (h *APIHandler) RegisterDeviceData(resp http.ResponseWriter, req *http.Requ
 			Timestamp:   timestamp,
 			Temperature: data.Temperature,
 			Heartrate:   data.Heartrate,
-			ECG:         data.Heartrate,
+			ECG:         data.ECG,
 			SPO2:        data.SPO2,
 		}
 		deviceDataset.Data = append(deviceDataset.Data, parsedData)
