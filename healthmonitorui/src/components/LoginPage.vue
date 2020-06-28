@@ -1,27 +1,27 @@
 <template>
   <div class="hello">
+
     <h1>HealthMonitor Welcome Page</h1>
+
     <div v-if="!loginOK">
+
       <h2>Complete the following form to register a new user</h2>
       <input v-model="registerUsername" placeholder="username">
       <input v-model="registerPassword" placeholder="password" type="password">
       <input v-model="registerPhone" placeholder="phoneNumber">
       <button v-on:click="registerUser">Register</button>
-    </div>
-    <div v-if="!loginOK">
       <h2>Complete the following form to login with your existing user</h2>
       <input v-model="loginUsername" placeholder="username">
       <input v-model="loginPassword" placeholder="password" type="password">
       <button v-on:click="loginUser">Login</button>
+
     </div>
-
-
 
     <div v-if="loginOK">
 
       <div class="container_selectors" v-if="loginOK">
         <div class="col">
-          <h2>Selected time interval {{ selectedInterval }}</h2>
+          <h2>Selected time interval {{ selectedInterval }} (minutes)</h2>
           <select v-model="selectedInterval">
             <option v-for="(interval, value) in possibleIntervals" :key="value">
               {{interval}}
@@ -31,7 +31,7 @@
 
 
         <div class="col">
-          <h2>Selected refresh frequency {{ selectedFrequency }}</h2>
+          <h2>Selected refresh frequency {{ selectedFrequency }} (seconds) </h2>
           <select v-model="selectedFrequency" @change="onFrequencyChange()">
             <option v-for="(frequency, value) in possibleFrequencies" :key="value">
               {{frequency}}
@@ -50,6 +50,8 @@
           </select>
         </div>
         <div class="col">
+          <h2>Device ID</h2>
+          <input v-model="operationDevice" placeholder="deviceID">
           <h2>Device actions</h2>
           <button>Add</button>
           <button>Delete</button>
@@ -59,49 +61,92 @@
       </div>
 
 
-      <div class="container_selectors">
+      <div v-if="deviceInfo !== null" class="container_data">
         <h2>Requested device info</h2>
-        <span> {{ deviceInfo }} </span>
+        <h5>Device ID: {{deviceInfo.device_info.did}}</h5>
+        <h5>Last seen timestamp: {{deviceInfo.device_info.last_seen_timestamp}}</h5>
+        <h5>Last validation timestamp: {{deviceInfo.device_info.last_validation_timestamp}}</h5>
+        <h5>Patient Name: {{deviceInfo.device_info.patient_name}}</h5>
       </div>
 
 
-      <h2>Device data plotted below</h2>
-
-
-      <div class="container_data">
+      <div v-if="deviceInfo !== null" class="container_data">
       <h3>Temperature</h3>
       <line-chart :data="temperatureData" :labels="labels" :label=temperatureLabel></line-chart>
+      <h2 v-if="temperatureAlerts.length > 0">Alerts</h2>
+      <div v-if="temperatureAlerts.length > 0" class="container_alerts">
+        <div v-for="(alert, index) in temperatureAlerts" :key="index" v-bind:class="alert.status ==='ACTIVE' ? 'alert-active' : 'alert-resolved'">
+          <h5>Alert Type: {{alert.alert_type}}</h5>
+          <h5>Created Timestamp: {{alert.created_timestamp}}</h5>
+          <h5>Last Active Timestamp: {{alert.last_active_timestamp}}</h5>
+          <h5 v-if="alert.status === 'RESOLVED'">Resolved Timestamp: {{alert.resolved_timestamp}}</h5>
+          <h5>Status: {{alert.status}}</h5>
+        </div>
+      </div>
+
       </div>
 
 
-      <div class="container_data">
+      <div v-if="deviceInfo !== null" class="container_data">
       <h3>Heart rate</h3>
       <line-chart :data="heartrateData" :labels="labels" :label=heartrateLabel></line-chart>
+        <h2 v-if="pulseAlerts.length > 0">Alerts</h2>
+        <div v-if="pulseAlerts.length > 0" class="container_alerts">
+          <div v-for="(alert, index) in pulseAlerts" :key="index" v-bind:class="alert.status ==='ACTIVE' ? 'alert-active' : 'alert-resolved'">
+            <h5>Alert Type: {{alert.alert_type}}</h5>
+            <h5>Created Timestamp: {{alert.created_timestamp}}</h5>
+            <h5>Last Active Timestamp: {{alert.last_active_timestamp}}</h5>
+            <h5 v-if="alert.status === 'RESOLVED'">Resolved Timestamp: {{alert.resolved_timestamp}}</h5>
+            <h5>Status: {{alert.status}}</h5>
+          </div>
+        </div>
       </div>
 
 
-      <div class="container_data">
+      <div v-if="deviceInfo !== null" class="container_data">
       <h3>ECG</h3>
       <line-chart :data="ecgData" :labels="labels" :label=ecgLabel></line-chart>
+        <h2 v-if="ecgAlerts.length > 0">Alerts</h2>
+        <div v-if="ecgAlerts.length > 0" class="container_alerts">
+          <div v-for="(alert, index) in ecgAlerts" :key="index" v-bind:class="alert.status ==='ACTIVE' ? 'alert-active' : 'alert-resolved'">
+            <h5>Alert Type: {{alert.alert_type}}</h5>
+            <h5>Created Timestamp: {{alert.created_timestamp}}</h5>
+            <h5>Last Active Timestamp: {{alert.last_active_timestamp}}</h5>
+            <h5 v-if="alert.status === 'RESOLVED'">Resolved Timestamp: {{alert.resolved_timestamp}}</h5>
+            <h5>Status: {{alert.status}}</h5>
+          </div>
+        </div>
       </div>
 
 
-      <div class="container_data">
+      <div v-if="deviceInfo !== null" class="container_data">
       <h3>Blood Oxygen Saturation</h3>
       <line-chart :data="oxygenData" :labels="labels" :label=oxygenLabel></line-chart>
-      </div>
+        <h2 v-if="oxygenAlerts.length > 0">Alerts</h2>
+        <div v-if="oxygenAlerts.length > 0" class="container_alerts">
+          <div v-for="(alert, index) in oxygenAlerts" :key="index" v-bind:class="alert.status ==='ACTIVE' ? 'alert-active' : 'alert-resolved'">
+            <h5>Alert Type: {{alert.alert_type}}</h5>
+            <h5>Created Timestamp: {{alert.created_timestamp}}</h5>
+            <h5>Last Active Timestamp: {{alert.last_active_timestamp}}</h5>
+            <h5 v-if="alert.status === 'RESOLVED'">Resolved Timestamp: {{alert.resolved_timestamp}}</h5>
+            <h5>Status: {{alert.status}}</h5>
+          </div>
+        </div>
+    </div>
     </div>
   </div>
+
 </template>
 
 <script>
   import LineChart from './LineChart.vue'
 
-  const baseURL = 'http://ec2-18-188-120-48.us-east-2.compute.amazonaws.com:9000'
+  const baseURL = 'http://healthmonitor-d2400c9ab166d3ea.elb.us-east-2.amazonaws.com'
   const loginPath = '/healthmonitorapi/auth/login'
   const registerPath = '/healthmonitorapi/auth/register'
   const deviceDataPath = '/healthmonitorapi/entities/devices/data'
   const deviceInfoPath = '/healthmonitorapi/entities/devices/info'
+  const deviceAlertsPath = '/healthmonitorapi/entities/devices/alerts'
   const userDevicesPath = '/healthmonitorapi/entities/users/devices'
 
   export default {
@@ -112,11 +157,14 @@
       registerUsername: "",
       registerPassword: "",
       registerPhone: "",
+      operationDevice: "",
 
       possibleIntervals: {
         LAST_MINUTE: 1,
         LAST_FIVE_MINUTES: 5,
-        LAST_FIFTEEN_MINUTES: 15
+        LAST_FIFTEEN_MINUTES: 15,
+        LAST_THIRTY_MINUTES: 30,
+        LAST_SIXTY_MINUTES: 60,
       },
 
       possibleFrequencies: {
@@ -124,6 +172,7 @@
         EVERY_FIFTEEN_SECONDS: 15,
         EVERY_THIRTY_SECONDS: 30,
         EVERY_MINUTE: 60,
+        EVERY_FIVE_MINUTES: 300,
       },
 
       selectedInterval: 1,
@@ -154,6 +203,11 @@
       ecgLabel: "ECG",
       ecgData: [],
       labels: [],
+      deviceAlerts: [],
+      temperatureAlerts: [],
+      oxygenAlerts: [],
+      ecgAlerts: [],
+      pulseAlerts: [],
     }
   },
   methods:{
@@ -169,6 +223,7 @@
       }).then(function(response) {
         this.registerUsername = ""
         this.registerPassword = ""
+        this.registerPhone = ""
         
         if (response.statusText === "OK") {
           alert("Register OK!")
@@ -233,7 +288,6 @@
       if (this.selectedDevice === '') {
         return
       }
-
       this.$http.get(baseURL + deviceInfoPath, {params: {did: this.selectedDevice}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
         if (response.statusText === "OK") {
           this.deviceInfo = response.data
@@ -273,12 +327,42 @@
         }
       });
     },
+    getDeviceAlerts: function(){
+      if (this.selectedDevice === '') {
+        return
+      }
+      this.$http.get(baseURL + deviceAlertsPath, {params: {did: this.selectedDevice}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
+        if (response.statusText === "OK") {
+          this.deviceAlerts = response.data.alerts
+          this.temperatureAlerts = this.deviceAlerts.filter(function(alert) {
+            return alert.alert_type === "TEMPERATURE_HIGH" || alert.alert_type === "TEMPERATURE_LOW"
+          })
+          this.ecgAlerts = this.deviceAlerts.filter(function(alert) {
+            return alert.alert_type === "ECG_HIGH" || alert.alert_type === "ECG_LOW"
+          })
+          this.oxygenAlerts = this.deviceAlerts.filter(function(alert) {
+            return alert.alert_type === "SP02_HIGH" || alert.alert_type === "SP02_LOW"
+          })
+          this.pulseAlerts = this.deviceAlerts.filter(function(alert) {
+            return alert.alert_type === "HEARTRATE_HIGH" || alert.alert_type === "HEARTRATE_LOW"
+          })
+          console.log(this.deviceAlerts)
+        }
+      }, function(error){
+        this.loginOK = false;
+        clearInterval(this.timer)
+        if (error.statusText === "Forbidden") {
+          alert("Login failed!")
+        }
+      });
+    },
     refreshDeviceData: function() {
       const nowTimestamp = Math.round(+new Date() / 1000)
       const minuteAgoTimestamp = nowTimestamp - 60 * this.selectedInterval
 
       this.getDeviceInfo()
       this.getDeviceData(minuteAgoTimestamp)
+      this.getDeviceAlerts()
     },
   },
   mounted: function () {},
@@ -289,23 +373,43 @@
 </script>
 
 <style scoped>
+  .hello {
+    background: lightblue;
+  }
   .container_selectors {
+    margin: 20px;
     border: 1px solid;
     display: flex;
+    background: white;
+  }
+
+  .alert-active {
+    border: 1px solid;
+    margin: 20px;
+    background: red;
+  }
+
+  .alert-resolved {
+    border: 1px solid;
+    margin: 20px;
+    background: yellow;
   }
 
   .container_data{
+    margin: 20px;
     border: 1px solid;
+    background: white;
   }
   .col {
     margin: 10px;
     border: 1px solid;
     flex: 1;
   }
-  .item-container {
+  .container_alerts {
     border: 1px solid;
-    padding: 5px;
-    margin: 5px;
+    overflow: auto;
+    white-space: nowrap;
+    display: flex;
   }
 
 h3 {
@@ -322,4 +426,5 @@ li {
 a {
   color: #42b983;
 }
+
 </style>

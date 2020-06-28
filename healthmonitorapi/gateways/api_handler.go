@@ -242,7 +242,8 @@ func (h *APIHandler) RegisterDeviceInfo(resp http.ResponseWriter, req *http.Requ
 	}
 
 	did := registerDeviceRequest.DID
-	deviceInfo, err = h.devicesRepo.RegisterDeviceInfo(ctx, did)
+	patient_name := registerDeviceRequest.PatientName
+	deviceInfo, err = h.devicesRepo.RegisterDeviceInfo(ctx, did, patient_name)
 	if err != nil {
 		log.WithError(err).Errorln("error registering device info")
 		statusCode = 500

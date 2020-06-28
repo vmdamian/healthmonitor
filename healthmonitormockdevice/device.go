@@ -60,9 +60,9 @@ func (d *Device) Stop() {
 }
 
 func (d *Device) createDevice() bool {
-	deviceInfo := &domain.DeviceInfo{
+	deviceInfo := &domain.RegisterDeviceInfoRequest{
 		DID: d.did,
-		LastSeenTimestamp: time.Now(),
+		PatientName: "John Doe",
 	}
 
 	bodyBytes, err := json.Marshal(deviceInfo)

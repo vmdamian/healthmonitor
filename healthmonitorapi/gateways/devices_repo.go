@@ -94,7 +94,7 @@ func (dr *DevicesRepo) GetDeviceInfo(ctx context.Context, did string) (*domain.D
 	}, nil
 }
 
-func (dr *DevicesRepo) RegisterDeviceInfo(ctx context.Context, did string) (*domain.DeviceInfo, error) {
+func (dr *DevicesRepo) RegisterDeviceInfo(ctx context.Context, did string, patient_name string) (*domain.DeviceInfo, error) {
 
 	exists, err := dr.checkExistingDevice(ctx, did)
 	if err != nil {
@@ -114,7 +114,7 @@ func (dr *DevicesRepo) RegisterDeviceInfo(ctx context.Context, did string) (*dom
 		DID:                     did,
 		LastSeenTimestamp:       timeNow.Format(time.RFC3339),
 		LastValidationTimestamp: timeZero.Format(time.RFC3339),
-		PatientName:             "",
+		PatientName:             patient_name,
 		SubscribedPhones:        []string{},
 	}
 
