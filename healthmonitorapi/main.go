@@ -38,7 +38,7 @@ func main() {
 	config := &HealthMonitorAPIServiceConfig{
 		Port:                            "9000",
 		PasswordSalt:                    "720036c8101f751b82cdba6e74fbd217419a2d478dd49f6d7ba6697ed3810ece",
-		ValidationInterval:              10 * time.Second,
+		ValidationInterval:              5 * time.Second,
 		HealthMonitorBoundsConfig:       boundsConfig,
 		HealthMonitorCleanupConfig:      cleanupConfig,
 		HealthMonitorDependenciesConfig: dependenciesConfig,

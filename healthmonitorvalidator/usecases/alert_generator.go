@@ -51,11 +51,10 @@ func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Conte
 		return err
 	}
 
-	if time.Since(deviceInfo.LastValidationTimestamp) <= 10 * time.Second {
+	if time.Since(deviceInfo.LastValidationTimestamp) <= 5 * time.Second {
 		ag.lock.Unlock()
 		return nil
 	}
-
 	err = ag.devicesRepo.UpdateDeviceInfo(ctx, deviceInfo.DID, time.Now())
 	if err != nil {
 		return fmt.Errorf("failed to update last validation timestamp for device %v", deviceInfo.DID)
