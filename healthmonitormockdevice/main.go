@@ -60,7 +60,7 @@ func main() {
 	devices := make([]*Device, 0, count)
 	dids := make([]string, 0, count)
 	for i := 0; i < count; i++ {
-		device := NewDevice(fmt.Sprintf("%v_%v%v", username, didPrefix, i), time.Duration(interval) * time.Second, dataOK)
+		device := NewDevice(fmt.Sprintf("%v_%v%v_%v", username, didPrefix, i, dataOK), time.Duration(interval) * time.Second, dataOK)
 		devices = append(devices, device)
 		dids = append(dids, device.GetDID())
 	}

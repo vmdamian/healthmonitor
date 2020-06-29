@@ -39,6 +39,8 @@ func NewAlertGenerator(validators []domain.Validator, devicesRepo *gateways.Devi
 
 func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Context, message string) error {
 
+	log.Info("HERE")
+
 	var did string
 	n, err := fmt.Sscanf(message, "validation_%v", &did)
 	if err != nil || n != 1 {
@@ -48,6 +50,7 @@ func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Conte
 	ag.lock.Lock()
 	deviceInfo, err := ag.devicesRepo.GetDeviceInfo(ctx, did)
 	if err != nil {
+		ag.lock.Unlock()
 		return err
 	}
 
@@ -55,16 +58,22 @@ func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Conte
 		ag.lock.Unlock()
 		return nil
 	}
+
 	err = ag.devicesRepo.UpdateDeviceInfo(ctx, deviceInfo.DID, time.Now())
 	if err != nil {
+		ag.lock.Unlock()
 		return fmt.Errorf("failed to update last validation timestamp for device %v", deviceInfo.DID)
 	}
 	ag.lock.Unlock()
+
+	log.Info("HERE2")
 
 	newAlerts, err := ag.generateAlertsForDevice(ctx, did)
 	if err != nil {
 		return err
 	}
+
+	log.Info("HERE3")
 
 	oldAlerts, err := ag.devicesRepo.GetDeviceAlerts(ctx, did, domain.ALERT_STATUS_ACTIVE)
 	if err != nil {
@@ -136,6 +145,8 @@ func (ag *AlertGenerator) generateAlertsForDevice(ctx context.Context, did strin
 		}(validator)
 	}
 
+	log.Info("HERE4")
+
 	collectWg.Add(1)
 	go func() {
 		for alert := range alertsChan {
@@ -144,9 +155,14 @@ func (ag *AlertGenerator) generateAlertsForDevice(ctx context.Context, did strin
 		collectWg.Done()
 	}()
 
+	log.Info("HERE5")
+
 	validateWg.Wait()
 	close(alertsChan)
+	log.Info("HERE6")
 	collectWg.Wait()
+	
+	log.Info("FINISH")
 
 	return generatedAlerts, nil
 }
