@@ -29,7 +29,7 @@ func (tv *PulseValidator) CheckData(dataSet *domain.DeviceDataset) []*domain.Ale
 			if currentAlert == nil {
 				currentAlert = &domain.Alert{
 					DID:                 dataSet.DID,
-					AlertType:           domain.ALERT_TYPE_SPO2_HIGH,
+					AlertType:           domain.ALERT_TYPE_HEARTRATE_HIGH,
 					Status:              domain.ALERT_STATUS_ACTIVE,
 					CreatedTimestamp:    dataPoint.Timestamp,
 					LastActiveTimestamp: dataPoint.Timestamp,
@@ -57,7 +57,7 @@ func (tv *PulseValidator) CheckData(dataSet *domain.DeviceDataset) []*domain.Ale
 			if currentAlert == nil {
 				currentAlert = &domain.Alert{
 					DID:                 dataSet.DID,
-					AlertType:           domain.ALERT_TYPE_SP02_LOW,
+					AlertType:           domain.ALERT_TYPE_HEARTRATE_LOW,
 					Status:              domain.ALERT_STATUS_ACTIVE,
 					CreatedTimestamp:    dataPoint.Timestamp,
 					LastActiveTimestamp: dataPoint.Timestamp,

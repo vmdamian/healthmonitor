@@ -161,7 +161,7 @@ func (ag *AlertGenerator) generateAlertsForDevice(ctx context.Context, did strin
 	close(alertsChan)
 	log.Info("HERE6")
 	collectWg.Wait()
-	
+
 	log.Info("FINISH")
 
 	return generatedAlerts, nil
