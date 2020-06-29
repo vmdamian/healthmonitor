@@ -97,14 +97,14 @@ func (d *Device) generateDeviceData() {
 		case <- d.ticker.C:
 			var temp, hr, ecg, spo2 float64
 			if d.dataOK == "good" {
-				temp = generateRandomFloat64(35, 37)
-				hr = generateRandomFloat64(60, 100)
+				temp = generateRandomFloat64(35, 38)
+				hr = generateRandomFloat64(60, 120)
 				ecg = generateRandomFloat64(200, 1000)
 				spo2 = generateRandomFloat64(90, 100)
 			} else {
-				temp = generateRandomFloat64(36, 38.5)
-				hr = generateRandomFloat64(90, 120)
-				ecg = generateRandomFloat64(200, 1000)
+				temp = generateRandomFloat64(33, 39.5)
+				hr = generateRandomFloat64(50, 140)
+				ecg = generateRandomFloat64(0, 500)
 				spo2 = generateRandomFloat64(80, 95)
 			}
 

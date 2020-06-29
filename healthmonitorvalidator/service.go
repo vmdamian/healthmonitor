@@ -17,7 +17,7 @@ func NewHealthMonitorValidatorService(config *HealthMonitorValidatorServiceConfi
 
 	validators := make([]domain.Validator, 0)
 	temperatureValidator := usecases.NewTemperatureValidator(35, 38)
-	ecgValidator := usecases.NewECGValidator(0, 1000)
+	ecgValidator := usecases.NewECGValidator(200, 1000)
 	spo2Validator := usecases.NewOxygenValidator(90, 100)
 	heartrateValidator := usecases.NewPulseValidator(60, 120)
 
