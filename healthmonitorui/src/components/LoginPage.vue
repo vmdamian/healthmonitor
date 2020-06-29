@@ -293,12 +293,8 @@
         if (response.statusText === "OK") {
           this.deviceInfo = response.data
         }
-      }, function(error){
-        this.loginOK = false;
-        clearInterval(this.timer)
-        if (error.statusText === "Forbidden") {
-          alert("Login failed!")
-        }
+      }, function(error) {
+        console.log(error)
       });
     },
     getDeviceData: function(since){
@@ -320,12 +316,8 @@
           this.ecgData = response.data.device_dataset.data.map(datapoint => datapoint.heart_ecg)
           this.oxygenData = response.data.device_dataset.data.map(datapoint => datapoint.spo2)
         }
-      }, function(error){
-        this.loginOK = false;
-        clearInterval(this.timer)
-        if (error.statusText === "Forbidden") {
-          alert("Login failed!")
-        }
+      }, function(error) {
+        console.log(error)
       });
     },
     getDeviceAlerts: function(){
@@ -348,12 +340,8 @@
             return alert.alert_type === "HEARTRATE_HIGH" || alert.alert_type === "HEARTRATE_LOW"
           })
         }
-      }, function(error){
-        this.loginOK = false;
-        clearInterval(this.timer)
-        if (error.statusText === "Forbidden") {
-          alert("Login failed!")
-        }
+      }, function(error) {
+        console.log(error)
       });
     },
     refreshDeviceData: function() {

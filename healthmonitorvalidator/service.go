@@ -17,7 +17,11 @@ func NewHealthMonitorValidatorService(config *HealthMonitorValidatorServiceConfi
 
 	validators := make([]domain.Validator, 0)
 	temperatureValidator := usecases.NewTemperatureValidator(35, 38)
-	validators = append(validators, temperatureValidator)
+	ecgValidator := usecases.NewECGValidator(0, 1000)
+	spo2Validator := usecases.NewOxygenValidator(90, 100)
+	heartrateValidator := usecases.NewPulseValidator(60, 120)
+
+	validators = append(validators, temperatureValidator, ecgValidator, spo2Validator, heartrateValidator)
 
 	devicesRepo := gateways.NewDevicesRepo(config.ElasticsearchHost)
 	alertSender := gateways.NewAlertSender(config.AlertSenderAccountSID, config.AlertSenderToken, config.AlertSenderPhoneNumber)

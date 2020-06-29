@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"healthmonitor/healthmonitorvalidator/domain"
 	"healthmonitor/healthmonitorvalidator/gateways"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,8 @@ type AlertGenerator struct {
 	alertCreated   bool
 	alertContinued bool
 	alertResolved  bool
+
+	lock sync.Mutex
 }
 
 func NewAlertGenerator(validators []domain.Validator, devicesRepo *gateways.DevicesRepo, alertSender *gateways.AlertSender, validationPeriod time.Duration,
@@ -30,6 +33,7 @@ func NewAlertGenerator(validators []domain.Validator, devicesRepo *gateways.Devi
 		alertCreated:     alertCreated,
 		alertContinued:   alertContinued,
 		alertResolved:    alertResolved,
+		lock: sync.Mutex{},
 	}
 }
 
@@ -40,6 +44,23 @@ func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Conte
 	if err != nil || n != 1 {
 		return fmt.Errorf("could not parse did from validation request = %v", message)
 	}
+
+	ag.lock.Lock()
+	deviceInfo, err := ag.devicesRepo.GetDeviceInfo(ctx, did)
+	if err != nil {
+		return err
+	}
+
+	if time.Since(deviceInfo.LastValidationTimestamp) <= 10 * time.Second {
+		ag.lock.Unlock()
+		return nil
+	}
+
+	err = ag.devicesRepo.UpdateDeviceInfo(ctx, deviceInfo.DID, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to update last validation timestamp for device %v", deviceInfo.DID)
+	}
+	ag.lock.Unlock()
 
 	newAlerts, err := ag.generateAlertsForDevice(ctx, did)
 	if err != nil {
@@ -77,11 +98,6 @@ func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Conte
 		return nil
 	}
 
-	deviceInfo, err := ag.devicesRepo.GetDeviceInfo(ctx, did)
-	if err != nil {
-		return err
-	}
-
 	var failedPhones []string
 	for _, subscribedPhone := range deviceInfo.SubscribedPhones {
 		err = ag.alertSender.SendAlerts(subscribedPhone, did, alertsToSend)
@@ -95,26 +111,43 @@ func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Conte
 		return fmt.Errorf("failed to send notifications to phoneNumbers=%v", failedPhones)
 	}
 
-	err = ag.devicesRepo.UpdateDeviceInfo(ctx, deviceInfo.DID, time.Now())
-	if err != nil {
-		return fmt.Errorf("failed to update last validation timestamp for device %v", deviceInfo.DID)
-	}
-
 	return nil
 }
 
 func (ag *AlertGenerator) generateAlertsForDevice(ctx context.Context, did string) ([]*domain.Alert, error) {
-	dataSince := time.Now().Add((-1) * ag.validationPeriod)
-	dataSet, err := ag.devicesRepo.GetDeviceData(ctx, did, dataSince)
+	dateSince := time.Now().Add((-1) * ag.validationPeriod)
+	dataSet, err := ag.devicesRepo.GetDeviceData(ctx, did, dateSince)
 	if err != nil {
 		return nil, err
 	}
 
+	validateWg := sync.WaitGroup{}
+	collectWg := sync.WaitGroup{}
+	alertsChan := make(chan *domain.Alert)
 	generatedAlerts := make([]*domain.Alert, 0)
+
 	for _, validator := range ag.validators {
-		alerts := validator.CheckData(dataSet)
-		generatedAlerts = append(generatedAlerts, alerts...)
+		validateWg.Add(1)
+		go func(validator domain.Validator) {
+			alerts := validator.CheckData(dataSet)
+			for _, alert := range alerts {
+				alertsChan <- alert
+			}
+			validateWg.Done()
+		}(validator)
 	}
+
+	collectWg.Add(1)
+	go func() {
+		for alert := range alertsChan {
+			generatedAlerts = append(generatedAlerts, alert)
+		}
+		collectWg.Done()
+	}()
+
+	validateWg.Wait()
+	close(alertsChan)
+	collectWg.Wait()
 
 	return generatedAlerts, nil
 }

@@ -14,8 +14,8 @@ func main() {
 	flag.Parse()
 
 	boundsConfig := HealthMonitorBoundsConfig{
-		TemperatureMinBound: 34,
-		TemperatureMaxBound: 38,
+		TemperatureMinBound: 30,
+		TemperatureMaxBound: 40,
 		HeartrateMinBound:   60,
 		HeartrateMaxBound:   100,
 		ECGMinBound:         0,
@@ -25,7 +25,7 @@ func main() {
 	}
 
 	cleanupConfig := HealthMonitorCleanupConfig{
-		CronJobInterval: 1 * time.Hour,
+		CronJobInterval: 24 * time.Hour,
 		MaxDatapointAge: 7 * 24 * time.Hour,
 	}
 
@@ -38,7 +38,7 @@ func main() {
 	config := &HealthMonitorAPIServiceConfig{
 		Port:                            "9000",
 		PasswordSalt:                    "720036c8101f751b82cdba6e74fbd217419a2d478dd49f6d7ba6697ed3810ece",
-		ValidationInterval:              5 * time.Minute,
+		ValidationInterval:              10 * time.Second,
 		HealthMonitorBoundsConfig:       boundsConfig,
 		HealthMonitorCleanupConfig:      cleanupConfig,
 		HealthMonitorDependenciesConfig: dependenciesConfig,
