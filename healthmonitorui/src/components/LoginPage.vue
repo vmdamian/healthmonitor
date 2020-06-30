@@ -21,12 +21,19 @@
 
       <div class="container_selectors" v-if="loginOK">
         <div class="col">
-          <h2>Selected time interval {{ selectedInterval }} (minutes)</h2>
+          <h2>Selected time interval {{ selectedInterval }} </h2>
+          <h3>Since</h3>
+          <input v-model="sinceTime" placeholder="since">
+          <h3>To</h3>
+          <input v-model="toTime" placeholder="to">
+          <br>
+          <br>
           <select v-model="selectedInterval">
             <option v-for="(interval, value) in possibleIntervals" :key="value">
               {{interval}}
             </option>
           </select>
+
         </div>
 
 
@@ -140,6 +147,7 @@
 
 <script>
   import LineChart from './LineChart.vue'
+  // You need a specific loader for CSS files
 
   const baseURL = 'http://healthmonitor-d2400c9ab166d3ea.elb.us-east-2.amazonaws.com'
   const loginPath = '/healthmonitorapi/auth/login'
@@ -161,11 +169,9 @@
       operationDevice: "",
 
       possibleIntervals: {
-        LAST_MINUTE: 1,
-        LAST_FIVE_MINUTES: 5,
-        LAST_FIFTEEN_MINUTES: 15,
-        LAST_THIRTY_MINUTES: 30,
-        LAST_SIXTY_MINUTES: 60,
+        HOURS: "hours",
+        MINUTES: "minutes",
+        SECONDS: "seconds",
       },
 
       possibleFrequencies: {
@@ -176,8 +182,11 @@
         EVERY_FIVE_MINUTES: 300,
       },
 
-      selectedInterval: 1,
+      selectedInterval:  "hours",
       selectedFrequency: 5,
+
+      sinceTime:15,
+      toTime:0,
 
       possibleDevices: [
       ],
@@ -209,6 +218,8 @@
       oxygenAlerts: [],
       ecgAlerts: [],
       pulseAlerts: [],
+
+      date: null,
     }
   },
   methods:{
@@ -297,12 +308,12 @@
         console.log(error)
       });
     },
-    getDeviceData: function(since){
+    getDeviceData: function(since, to){
       if (this.selectedDevice === '') {
         return
       }
 
-      this.$http.get(baseURL + deviceDataPath, {params: { did: this.selectedDevice, since: since}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
+      this.$http.get(baseURL + deviceDataPath, {params: { did: this.selectedDevice, since: since, to: to}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
         if (response.statusText === "OK") {
           this.labels = response.data.device_dataset.data.map(function(datapoint) {
             const date = new Date(datapoint.timestamp)
@@ -346,10 +357,17 @@
     },
     refreshDeviceData: function() {
       const nowTimestamp = Math.round(+new Date() / 1000)
-      const minuteAgoTimestamp = nowTimestamp - 60 * this.selectedInterval
+      var multiplier = 1
+      if (this.selectedInterval === 'hours') {
+        multiplier = 3600
+      } else if (this.selectedInterval === 'minutes') {
+        multiplier = 60
+      }
+      const sinceTimestamp = nowTimestamp - multiplier * this.sinceTime
+      const toTimestamp = nowTimestamp - multiplier * this.toTime
 
       this.getDeviceInfo()
-      this.getDeviceData(minuteAgoTimestamp)
+      this.getDeviceData(sinceTimestamp, toTimestamp)
       this.getDeviceAlerts()
     },
     onDeviceAdd: function() {
