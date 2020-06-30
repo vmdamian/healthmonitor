@@ -120,6 +120,10 @@ func (ag *ReportGenerator) GenerateReport(ctx context.Context, message string) e
 
 	wg.Wait()
 
+	if infoWriteErr != nil {
+		return infoWriteErr
+	}
+
 	if dataWriteErr != nil {
 		return dataWriteErr
 	}

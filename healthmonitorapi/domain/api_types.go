@@ -48,7 +48,7 @@ type UpdateDeviceInfoRequest struct {
 }
 
 type RegisterDeviceInfoRequest struct {
-	DID string `json:"did"`
+	DID         string `json:"did"`
 	PatientName string `json:"patient_name"`
 }
 

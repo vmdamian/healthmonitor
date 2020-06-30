@@ -49,7 +49,7 @@ func (as *AlertSender) SendAlerts(receiverPhoneNumber string, did string, alerts
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return errors.New(fmt.Sprintf("failed to send text message to %v, got status %v", receiverPhoneNumber, resp.StatusCode))
 	} else {
-		log.Infoln("Sent alerts to phone_number=%v, alerts=%v", receiverPhoneNumber, alerts)
+		log.Infof("Sent alerts to phone_number=%v, alerts=%v", receiverPhoneNumber, alerts)
 	}
 
 	return nil

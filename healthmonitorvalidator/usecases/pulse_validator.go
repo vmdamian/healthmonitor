@@ -25,6 +25,11 @@ func (tv *PulseValidator) CheckData(dataSet *domain.DeviceDataset) []*domain.Ale
 	var currentAlert *domain.Alert
 
 	for _, dataPoint := range dataSet.Data {
+
+		if dataPoint.Heartrate == -1 {
+			continue
+		}
+
 		if dataPoint.Heartrate >= tv.HighMargin {
 			if currentAlert == nil {
 				currentAlert = &domain.Alert{
@@ -53,6 +58,11 @@ func (tv *PulseValidator) CheckData(dataSet *domain.DeviceDataset) []*domain.Ale
 	}
 
 	for _, dataPoint := range dataSet.Data {
+
+		if dataPoint.Heartrate == -1 {
+			continue
+		}
+
 		if dataPoint.Heartrate <= tv.LowMargin {
 			if currentAlert == nil {
 				currentAlert = &domain.Alert{

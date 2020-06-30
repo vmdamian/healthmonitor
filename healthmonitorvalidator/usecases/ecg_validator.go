@@ -25,6 +25,11 @@ func (tv *ECGValidator) CheckData(dataSet *domain.DeviceDataset) []*domain.Alert
 	var currentAlert *domain.Alert
 
 	for _, dataPoint := range dataSet.Data {
+
+		if dataPoint.ECG == -1 {
+			continue
+		}
+
 		if dataPoint.ECG >= tv.HighMargin {
 			if currentAlert == nil {
 				currentAlert = &domain.Alert{
@@ -53,6 +58,11 @@ func (tv *ECGValidator) CheckData(dataSet *domain.DeviceDataset) []*domain.Alert
 	}
 
 	for _, dataPoint := range dataSet.Data {
+
+		if dataPoint.ECG == -1 {
+			continue
+		}
+
 		if dataPoint.ECG <= tv.LowMargin {
 			if currentAlert == nil {
 				currentAlert = &domain.Alert{

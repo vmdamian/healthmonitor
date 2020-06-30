@@ -152,8 +152,8 @@ func (dr *DevicesRepo) UpdateDeviceInfo(ctx context.Context, did string, patient
 	return nil
 }
 
-func (dr *DevicesRepo) GetDeviceData(ctx context.Context, did string, since time.Time) (*domain.DeviceDataset, error) {
-	rangeQuery := elastic.NewRangeQuery(timestampField).Gte(since.Format(time.RFC3339))
+func (dr *DevicesRepo) GetDeviceData(ctx context.Context, did string, since time.Time, toTime time.Time) (*domain.DeviceDataset, error) {
+	rangeQuery := elastic.NewRangeQuery(timestampField).Gte(since.Format(time.RFC3339)).Lte(toTime.Format(time.RFC3339))
 	termQuery := elastic.NewTermQuery(didField, did)
 	query := elastic.NewBoolQuery().Filter(termQuery, rangeQuery)
 

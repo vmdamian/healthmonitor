@@ -33,7 +33,7 @@ func NewAlertGenerator(validators []domain.Validator, devicesRepo *gateways.Devi
 		alertCreated:     alertCreated,
 		alertContinued:   alertContinued,
 		alertResolved:    alertResolved,
-		lock: sync.Mutex{},
+		lock:             sync.Mutex{},
 	}
 }
 
@@ -54,7 +54,7 @@ func (ag *AlertGenerator) GenerateUpdateAndSendAlertsForDevice(ctx context.Conte
 		return err
 	}
 
-	if time.Since(deviceInfo.LastValidationTimestamp) <= 5 * time.Second {
+	if time.Since(deviceInfo.LastValidationTimestamp) <= 5*time.Second {
 		ag.lock.Unlock()
 		return nil
 	}

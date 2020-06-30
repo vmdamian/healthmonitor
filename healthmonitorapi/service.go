@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	healthPath = "/healthmonitorapi/health"
+	healthPath     = "/healthmonitorapi/health"
 	deviceInfoPath = "/healthmonitorapi/entities/devices/info"
 	deviceDataPath = "/healthmonitorapi/entities/devices/data"
 

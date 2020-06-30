@@ -25,6 +25,11 @@ func (tv *OxygenValidator) CheckData(dataSet *domain.DeviceDataset) []*domain.Al
 	var currentAlert *domain.Alert
 
 	for _, dataPoint := range dataSet.Data {
+
+		if dataPoint.SPO2 == -1 {
+			continue
+		}
+
 		if dataPoint.SPO2 >= tv.HighMargin {
 			if currentAlert == nil {
 				currentAlert = &domain.Alert{
@@ -53,6 +58,11 @@ func (tv *OxygenValidator) CheckData(dataSet *domain.DeviceDataset) []*domain.Al
 	}
 
 	for _, dataPoint := range dataSet.Data {
+
+		if dataPoint.SPO2 == -1 {
+			continue
+		}
+
 		if dataPoint.SPO2 <= tv.LowMargin {
 			if currentAlert == nil {
 				currentAlert = &domain.Alert{

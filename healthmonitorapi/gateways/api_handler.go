@@ -22,6 +22,7 @@ const (
 
 	didQueryParam   = "did"
 	sinceQueryParam = "since"
+	toQueryParam    = "to"
 )
 
 type APIHandler struct {
@@ -176,6 +177,13 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 		return
 	}
 
+	toTime, err := validateToParam(req)
+	if err != nil {
+		statusCode = 400
+		apiErrors = append(apiErrors, err)
+		return
+	}
+
 	// Get devices that the user can access.
 	userDevices, err := h.usersRepo.GetDevicesForUser(ctx, username)
 	if err != nil {
@@ -190,7 +198,7 @@ func (h *APIHandler) GetDeviceData(resp http.ResponseWriter, req *http.Request) 
 	}
 
 	// Get data for the specific device.
-	dataset, err = h.devicesRepo.GetDeviceData(ctx, did, sinceTime)
+	dataset, err = h.devicesRepo.GetDeviceData(ctx, did, sinceTime, toTime)
 	if err != nil {
 		log.WithError(err).Errorln("error getting device data response")
 		statusCode = 500
@@ -1025,6 +1033,34 @@ func validateSinceParam(req *http.Request) (time.Time, error) {
 	}
 
 	return time.Unix(sinceTimestamp, 0), nil
+}
+
+func validateToParam(req *http.Request) (time.Time, error) {
+	tos := req.URL.Query()[toQueryParam]
+
+	if len(tos) == 0 {
+		return time.Now(), nil
+	}
+
+	if len(tos) > 1 {
+		return time.Time{}, fmt.Errorf("got multiple or no to params; to=%v", tos)
+	}
+
+	to := tos[0]
+	if to == "" {
+		return time.Now(), nil
+	}
+
+	if to == "now" {
+		return time.Now(), nil
+	}
+
+	toTimestamp, err := strconv.ParseInt(to, 10, 64)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error trying to parse since param; should be a unix timestamp; to=%v", to)
+	}
+
+	return time.Unix(toTimestamp, 0), nil
 }
 
 func getAuthToken(req *http.Request) string {
