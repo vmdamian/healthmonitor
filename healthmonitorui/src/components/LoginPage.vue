@@ -338,6 +338,10 @@
       this.$http.get(baseURL + deviceAlertsPath, {params: {did: this.selectedDevice}, headers: {Authorization: 'Bearer ' + this.token}}).then(function(response){
         if (response.statusText === "OK") {
           this.deviceAlerts = response.data.alerts
+          this.temperatureAlerts = []
+          this.ecgAlerts = []
+          this.oxygenAlerts = []
+          this.pulseAlerts = []
           this.temperatureAlerts = this.deviceAlerts.filter(function(alert) {
             return alert.alert_type === "TEMPERATURE_HIGH" || alert.alert_type === "TEMPERATURE_LOW"
           })
