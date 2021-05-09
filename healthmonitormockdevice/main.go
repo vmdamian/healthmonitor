@@ -21,7 +21,7 @@ const (
 	stopCommand = "stop"
 	statsCommand = "stats"
 
-	healthmonitorAPIURL = "http://healthmonitor-d2400c9ab166d3ea.elb.us-east-2.amazonaws.com"
+	healthmonitorAPIURL = "http://localhost:9000"
 	loginPath = "/healthmonitorapi/auth/login"
 	userDevicesPath = "/healthmonitorapi/entities/users/devices"
 	registerDevicePath = "/healthmonitorapi/entities/devices/info"
