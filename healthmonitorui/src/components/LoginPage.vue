@@ -149,7 +149,7 @@
   import LineChart from './LineChart.vue'
   // You need a specific loader for CSS files
 
-  const baseURL = 'http://healthmonitor-d2400c9ab166d3ea.elb.us-east-2.amazonaws.com'
+  const baseURL = 'http://34.116.179.226:9000'
   const loginPath = '/healthmonitorapi/auth/login'
   const registerPath = '/healthmonitorapi/auth/register'
   const deviceDataPath = '/healthmonitorapi/entities/devices/data'
