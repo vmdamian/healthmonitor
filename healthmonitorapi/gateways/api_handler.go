@@ -11,6 +11,7 @@ import (
 	"healthmonitor/healthmonitorapi/usecases/validation"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -1000,28 +1001,37 @@ func (h *APIHandler) GenerateExport(resp http.ResponseWriter, req *http.Request)
 			return
 		}
 
+		y, m, d := time.Now().Date()
+		h, min, s := time.Now().Clock()
+		fileName := fmt.Sprintf("%v%v%v_%v%v%v", y,m,d,h,min,s)
+
+		_ = req.ParseMultipartForm(32 << 20)
+		file, handler, err := req.FormFile(fileName)
+		if err != nil {
+			log.WithError(err).Errorln("got error with creating form file")
+			return
+		}
+		defer file.Close()
+
+		f, err := os.OpenFile(handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			log.WithError(err).Errorln("got error opening file")
+			return
+		}
+
 		dataBytes,err := json.Marshal(data)
 		if err != nil {
 			log.WithError(err).Errorln("failed to marshall data")
 			return
 		}
 
-		y, m, d := time.Now().Date()
-		h, min, s := time.Now().Clock()
-
-		file, err := ioutil.TempFile("", fmt.Sprintf("%v%v%v_%v%v%v", y,m,d,h,min,s))
-		if err != nil {
-			log.WithError(err).Errorln("failed to create file")
-			return
-		}
-
-		_, err = file.Write(dataBytes)
+		_, err = f.Write(dataBytes)
 		if err != nil {
 			log.WithError(err).Errorln("failed to write in file")
 			return
 		}
 
-		err = uploader.UploadFile(file, file.Name())
+		err = uploader.UploadFile(f, fileName)
 		if err != nil {
 			log.WithError(err).Errorln("failed to upload file")
 			return
