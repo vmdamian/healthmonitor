@@ -8,6 +8,7 @@ import (
 	"github.com/olivere/elastic/v7"
 	log "github.com/sirupsen/logrus"
 	"healthmonitor/healthmonitorapi/domain"
+	"io"
 	"time"
 )
 
@@ -247,6 +248,39 @@ func (dr *DevicesRepo) RegisterDeviceData(ctx context.Context, deviceData domain
 
 	return nil
 }
+
+func (dr *DevicesRepo) ScrollDeviceData(ctx context.Context) ([]domain.DeviceDataES, error) {
+	scrollService := dr.client.Scroll(dataIndex)
+	dataPoints := make([]domain.DeviceDataES, 0)
+
+	for {
+		res, err := scrollService.Do(ctx)
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		if res == nil {
+			return nil, errors.New("expected results")
+		}
+
+		for _, hit := range res.Hits.Hits {
+			var dataPoint domain.DeviceDataES
+			err := json.Unmarshal(hit.Source, &dataPoint)
+			if err != nil {
+				return nil, err
+			}
+
+			dataPoints = append(dataPoints, dataPoint)
+		}
+	}
+
+	return dataPoints, nil
+}
+
 
 func (dr *DevicesRepo) GetAlerts(ctx context.Context, did string) ([]*domain.Alert, error) {
 	termQuery := elastic.NewTermQuery(didField, did)

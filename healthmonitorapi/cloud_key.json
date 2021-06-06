@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "i-mind-313212",
+  "private_key_id": "04a7dab4e02d8a62e619c930f31b1eb8a26c13e4",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC4I3RK05DKy1Dh\nhE3I5V4d+vZBw/8GvdWKjmFJeWeWjP9zmi5cVuXVMefoZoQ1cQG99uzFwiZrS38Z\n+LNrNh6D+fyGCtoiaujIN5ali5IGlpl0YEWhX0bbMch5ukXYGVLqrMoBnFG7fki0\nP7g4hS3J9C65ygIJMyiDsUsciSQmkdF+CxzW/3DyslnsPSPMJAp3EyAfXAVzhak/\n1CJoO9tcxNEYfgSKRURatepq+y1QW/qU4KS1cU7y+XY8Qg3NJ3Sx/N05Jk5iTjIH\n++sdzXNBrAxClkvZKbMgKe9hG64psw/m2kGqxQ233NCTna7Zl8QcgQMLBxWRcP0f\njwbcQOAHAgMBAAECggEAAgbTy+XHJKgb4VuxL2ck8hlXvhy1hc6HMBkL2uNMWlWk\nBSp21ZuakmOF1seEl9mdbq6wYHycr+X214NkU+w3xOl2g6ryNK1mcWvFIgycAXL3\nEgsvzu6jlCNA919Z5wlpWpHDgnQaRmlm1ifapGqvbOe8k0C5w+/StWMq/oY+Caws\nie50tV9gO3O6OCYI4SiYTJvVu6Wc6YvG/wIosnJCW4wH0tRQfZmfS7D/UyAY++FA\nsPr+c5GXuehXE8OxZdJJKwVG3mAV0FcH58r6sy4ajSqDFCUWMhIwffaUM8DNP1z+\nnU6uBxvYcUR37aQQgJ8DYco2t7clF2Iz5ZIl218Z/QKBgQD9gDZxXY1FsobaEXWU\nfr6HoouU48aCPuB0X9E4FbEc4s5D4AN2k9Lj0qcbYThXFbO5proLfq7zfSucIxD6\ntf3f4anxViCVxdvSsZQfptqMFTVF+3XSLsW9UlTKtYoAnolxQF3ELGBNgPw8X6bk\nI+EBNSSUgh0VUvh9ti+nYXneDQKBgQC59C80/VfPOEVn75Ate6fBdU65DG3wZR8a\nMDzbSyMl1h74unogISPk4tYhKzWIH+cSwW0DPJfLjunL5CspOkd015seYX2trnov\nb1sIp+kKitp4H2/T0LO+9nG+SwGtYUAKFIPPqgNnD0Veb2TVpxQKr0V8KH5msMBu\nZ2Dgm0DFYwKBgCcbJkrqwaZk2gS9+MOFoeLOonW/hZoGFR4ewenC/uWT33n9Dsu2\nFixrDLhekRBuGqGjJMQtMNQDFT0q862Zcaad61d9j91K/pRMLKuNU92UT/mRxyU7\nbem8z7PNuZJK4q0D3vMqXVjXcxHlN5uuJUHIbvIx+EaX3BmYh1Vs5h3pAoGBAIsr\nDQmDcWxMmOUojab8nJhUyw4DF2SKybQ31dPpb+ypS5SrOytAojRy7/7y76Vo+u82\ng/egKZrW4nMN2J+KVmBD3HvoSr7pjdhiZqcbw3V4ZfjwziigUWXh206npCG2Xs8s\ne1m3y8Qd0bTTeYvM91rnwgEh7Te9oMb/56kxiFAxAoGBAMgdMq+mbhi/piNCiXpN\nAuYaSuKx4VERKl0mdrNTuZCASIB3ICoopt5dS7XgjtanFvooG47zEP/fc02NibZw\ne66gNv+sAudSvHqC/TLd/fDaEpJxfpMgg5Y8BiT6vvxQV0ORqajW9xtnXPTxSRez\nowyEQRwEBDRDNVIRD78UX8lR\n-----END PRIVATE KEY-----\n",
+  "client_email": "healthmonitor@i-mind-313212.iam.gserviceaccount.com",
+  "client_id": "113500258129895652562",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/healthmonitor%40i-mind-313212.iam.gserviceaccount.com"
+}
