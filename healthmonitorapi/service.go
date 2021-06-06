@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	"healthmonitor/healthmonitorapi/gateways"
 	"healthmonitor/healthmonitorapi/usecases/jobs"
 	"healthmonitor/healthmonitorapi/usecases/validation"
@@ -23,6 +24,8 @@ const (
 	loginPath    = "/healthmonitorapi/auth/login"
 
 	deviceReportsPath = "/healthmonitorapi/entities/devices/reports"
+
+	exportsPath = "/healthmonitorapi/entities/exports"
 )
 
 type HealthMonitorAPIService struct {
@@ -46,8 +49,12 @@ func NewHealthMonitorAPIService(config *HealthMonitorAPIServiceConfig) *HealthMo
 	devicesRepo := gateways.NewDevicesRepo(config.ElasticsearchHost)
 	messagingRepo := gateways.NewMessagingRepo(config.KafkaBrokers)
 	cronJobRunner := jobs.NewCronJobRunner(messagingRepo, config.CronJobInterval, config.MaxDatapointAge)
+	fileUploader, err := gateways.NewFileUploader()
+	if err != nil {
+		log.WithError(err).Fatalln("failed to start file uploader")
+	}
 
-	apiHandler := gateways.NewAPIHandler(usersRepo, devicesRepo, messagingRepo, minimalistValidator, config.PasswordSalt, config.ValidationInterval)
+	apiHandler := gateways.NewAPIHandler(usersRepo, devicesRepo, messagingRepo, minimalistValidator,fileUploader, config.PasswordSalt, config.ValidationInterval)
 
 	service := &HealthMonitorAPIService{
 		UsersRepo:     usersRepo,
@@ -110,6 +117,8 @@ func (s *HealthMonitorAPIService) registerRoutes() {
 	router.HandleFunc(loginPath, s.APIHandler.LoginUser).Methods("POST")
 
 	router.HandleFunc(deviceReportsPath, s.APIHandler.StartReportGeneration).Methods("POST")
+
+	router.HandleFunc(exportsPath, s.APIHandler.GenerateExport).Methods("GET")
 
 	s.router = router
 }

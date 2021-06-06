@@ -21,7 +21,7 @@ const (
 	stopCommand = "stop"
 	statsCommand = "stats"
 
-	healthmonitorAPIURL = "http://localhost:9000"
+	healthmonitorAPIURL = "http://34.116.179.226:9000"
 	loginPath = "/healthmonitorapi/auth/login"
 	userDevicesPath = "/healthmonitorapi/entities/users/devices"
 	registerDevicePath = "/healthmonitorapi/entities/devices/info"
@@ -59,8 +59,15 @@ func main() {
 	log.Infoln("> creating devices")
 	devices := make([]*Device, 0, count)
 	dids := make([]string, 0, count)
+
+	var prefix string
+	if dataOK == "good" {
+		prefix = "good"
+	} else {
+		prefix = "bad"
+	}
 	for i := 0; i < count; i++ {
-		device := NewDevice("gooddevice", time.Duration(interval) * time.Second, dataOK)
+		device := NewDevice(fmt.Sprintf("%v_device_%v", prefix, i), time.Duration(interval) * time.Second, dataOK)
 		devices = append(devices, device)
 		dids = append(dids, device.GetDID())
 	}

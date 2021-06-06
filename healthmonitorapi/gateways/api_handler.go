@@ -32,9 +32,10 @@ type APIHandler struct {
 	validator          *validation.MinimalistValidator
 	passwordSalt       string
 	validationInterval time.Duration
+	fileUploader *ClientUploader
 }
 
-func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, messagingRepo *MessagingRepo, validator *validation.MinimalistValidator, passwordSalt string, validationInterval time.Duration) *APIHandler {
+func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, messagingRepo *MessagingRepo, validator *validation.MinimalistValidator, fileUploader *ClientUploader, passwordSalt string, validationInterval time.Duration) *APIHandler {
 	return &APIHandler{
 		usersRepo:          usersRepo,
 		devicesRepo:        devicesRepo,
@@ -42,6 +43,7 @@ func NewAPIHandler(usersRepo *UsersRepo, devicesRepo *DevicesRepo, messagingRepo
 		validator:          validator,
 		passwordSalt:       passwordSalt,
 		validationInterval: validationInterval,
+		fileUploader: fileUploader,
 	}
 }
 
@@ -984,6 +986,49 @@ func (h *APIHandler) UpdateDeviceInfo(resp http.ResponseWriter, req *http.Reques
 	}
 
 	statusCode = 200
+}
+
+func (h *APIHandler) GenerateExport(resp http.ResponseWriter, req *http.Request) {
+
+	ctx := req.Context()
+	uploader := h.fileUploader
+
+	go func() {
+		data, err := h.devicesRepo.ScrollDeviceData(ctx)
+		if err != nil {
+			log.WithError(err).Errorln("got error scrolling data")
+			return
+		}
+
+		dataBytes,err := json.Marshal(data)
+		if err != nil {
+			log.WithError(err).Errorln("failed to marshall data")
+			return
+		}
+
+		y, m, d := time.Now().Date()
+		h, min, s := time.Now().Clock()
+
+		file, err := ioutil.TempFile("", fmt.Sprintf("%v%v%v_%v%v%v", y,m,d,h,min,s))
+		if err != nil {
+			log.WithError(err).Errorln("failed to create file")
+			return
+		}
+
+		_, err = file.Write(dataBytes)
+		if err != nil {
+			log.WithError(err).Errorln("failed to write in file")
+			return
+		}
+
+		err = uploader.UploadFile(file, file.Name())
+		if err != nil {
+			log.WithError(err).Errorln("failed to upload file")
+			return
+		}
+	}()
+
+	resp.WriteHeader(200)
 }
 
 func stringInList(itemToFind string, items []string) bool {
